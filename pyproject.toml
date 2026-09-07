@@ -1,0 +1,7 @@
+[project]
+name = "cargohub-wms-api"
+version = "0.1.0"
+description = "School project for Cargohub WMS API"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
