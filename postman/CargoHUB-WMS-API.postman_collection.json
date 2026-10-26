@@ -1,0 +1,4488 @@
+{
+  "info": {
+    "name": "CargoHUB WMS API v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "CargoHUB WMS API - the full request library, generated from\nthe source in `api/` by `postman/generate_postman.py`.\n\n## Running the API\n\n```sh\n./start-system.sh        # serves on http://localhost:3000\n```\n\nThe API is a `http.server` handler in front of the JSON files in `data/`.\n\n## Conventions\n\n- Base path: `{{base_url}}/api/v1`. Nothing else is routed, and a path that does\n  not start with `/api/v1` gets no HTTP response at all - the handler returns\n  without writing a status line, so the client sees an empty reply.\n- Auth: an `API_KEY` header matched against `data/user.json`. Missing or unknown\n  key -> 401; a known key without the right flag -> 403. Every request in this\n  collection already carries a key that is allowed to make that call, so a 403\n  means the flag changed in `data/user.json`.\n- Authorisation is checked on the **first path segment only**, before routing.\n  So `GET /nonsense` is a 403 rather than a 404, and sub-routes inherit the\n  parent resource's flags.\n- POST: the `id` goes in the body, `created_at` / `updated_at` are stamped\n  server-side, and the reply is a 201 with an empty body.\n- PUT: replaces the *entire* record - send every field, or the missing ones are\n  dropped. Replies 200.\n- DELETE: replies 200 whether or not the id existed.\n- `GET /<resource>/<unknown id>` is a 200 with a `null` body, not a 404.\n- Nested writes (`PUT /orders/{id}/items`, `PUT /shipments/{id}/items`,\n  `PUT /shipments/{id}/orders`) take a **bare JSON array** as the body.\n- No pagination, filtering, sorting or query parameters exist anywhere. Listing\n  orders or shipments returns the whole table (~5-6k records, each with its\n  items inlined).\n\n## Variables\n\n`{{<resource>_id}}` is what the read requests point at; `{{<resource>_write_id}}`\nis what PUT / DELETE / commit point at, so repointing a write never changes what\nthe GETs show. Both default to `1`.\n\n## Which key can do what\n\n| app | scope |\n| --- | --- |\n| analytics_dashboard | read-only on everything |\n| smartglass_reader | read-all, PUT on transfers and inventories |\n| order_picker | read-all, PUT on transfers, orders, inventories |\n| receiving_station | read-all, POST/PUT on everything except warehouses, locations, clients |\n| shipping_station | read-all, POST/PUT on transfers, clients, shipments; PUT on orders, inventories |\n| facility_management | full CRUD on warehouses, locations, item_lines, item_groups, item_types, suppliers, clients |\n\nDELETE is granted to `facility_management` only, so `DELETE` on transfers,\nitems, orders, shipments and inventories is unreachable for every key that\nexists - those requests are marked and expect a 403.\n\n## Known issues this collection surfaces\n\nWrites do not persist. Every handler mutates one pool instance and then calls\n`data_provider.fetch_*_pool().save()`, which builds a *fresh* instance from disk\nand writes that back unchanged - so a POST replies 201, a PUT replies 200, and\nnothing reaches `data/`. The one visible effect of a write is that the JSON file\ngets rewritten in compact form. Folder `99 - Scenario` walks the transfer commit\nroute and its last assertion fails for exactly this reason.\n"
+  },
+  "item": [
+    {
+      "name": "00 - Auth & errors",
+      "item": [
+        {
+          "name": "No API key -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses"
+              ]
+            },
+            "description": "Every route requires the `API_KEY` header. A missing or unknown key is a 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown API key -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "not-a-real-key",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Key without write access -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_readonly}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses"
+              ]
+            },
+            "description": "`api_key_readonly` is the analytics_dashboard key: GET on everything, no writes. Permissions are per-resource and per-method in data/user.json.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"code\": \"VGH-AMB\",\n  \"name\": \"Jumbo DC Veghel Ambient\",\n  \"address\": \"De Amert 409\",\n  \"city\": \"Veghel\",\n  \"zip_code\": \"5462 GH\",\n  \"province\": \"Noord-Brabant\",\n  \"country\": \"Netherlands\",\n  \"contact_name\": \"Ali Schellekens\",\n  \"contact_phone\": \"(032) 1819600\",\n  \"contact_email\": \"vgh-amb@jumbo-logistiek.nl\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('new_id', 999999);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown resource -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/there_is_no_such_thing",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "there_is_no_such_thing"
+              ]
+            },
+            "description": "A resource that is not in the user's `endpoint_access` map is refused before routing happens, so an unknown *resource* answers 403 - not the 404 you might expect."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown sub-resource -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses/1/nope",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses",
+                "1",
+                "nope"
+              ]
+            },
+            "description": "Past the access check, an unrecognised sub-path is a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Non-numeric id -> 500",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses/abc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses",
+                "abc"
+              ]
+            },
+            "description": "`int(paths[1])` raises and the handler turns every exception into a bare 500."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 500', function () {",
+                  "    pm.response.to.have.status(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Authentication is a single `API_KEY` header matched against data/user.json; authorisation is a per-resource, per-method flag on that user. There is no /api/v2, and a path that does not start with `/api/v1` gets no HTTP response at all - the handler falls through without writing a status line, so the client sees an empty reply."
+    },
+    {
+      "name": "Warehouses",
+      "item": [
+        {
+          "name": "List warehouses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses"
+              ]
+            },
+            "description": "All warehouses. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get warehouse by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses/{{warehouse_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses",
+                "{{warehouse_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Locations in warehouse",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses/{{warehouse_id}}/locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses",
+                "{{warehouse_id}}",
+                "locations"
+              ]
+            },
+            "description": "Every location row whose warehouse_id matches."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create warehouse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"code\": \"VGH-AMB\",\n  \"name\": \"Jumbo DC Veghel Ambient\",\n  \"address\": \"De Amert 409\",\n  \"city\": \"Veghel\",\n  \"zip_code\": \"5462 GH\",\n  \"province\": \"Noord-Brabant\",\n  \"country\": \"Netherlands\",\n  \"contact_name\": \"Ali Schellekens\",\n  \"contact_phone\": \"(032) 1819600\",\n  \"contact_email\": \"vgh-amb@jumbo-logistiek.nl\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update warehouse' / 'Delete warehouse' can target it.",
+                  "pm.collectionVariables.set('created_warehouse_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update warehouse",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses/{{warehouse_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses",
+                "{{warehouse_write_id}}"
+              ]
+            },
+            "description": "Full replace of `warehouses/{{warehouse_write_id}}` - PUT overwrites the whole record, so send every field. Point `warehouse_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"code\": \"VGH-AMB\",\n  \"name\": \"Jumbo DC Veghel Ambient\",\n  \"address\": \"De Amert 409\",\n  \"city\": \"Veghel\",\n  \"zip_code\": \"5462 GH\",\n  \"province\": \"Noord-Brabant\",\n  \"country\": \"Netherlands\",\n  \"contact_name\": \"Ali Schellekens\",\n  \"contact_phone\": \"(032) 1819600\",\n  \"contact_email\": \"vgh-amb@jumbo-logistiek.nl\",\n  \"created_at\": \"2024-06-21T22:43:23Z\",\n  \"updated_at\": \"2024-06-23T04:51:45Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('warehouse_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete warehouse",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/warehouses/{{warehouse_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses",
+                "{{warehouse_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Locations",
+      "item": [
+        {
+          "name": "List locations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "locations"
+              ]
+            },
+            "description": "All locations. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get location by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/locations/{{location_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "locations",
+                "{{location_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "locations"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"warehouse_id\": 1,\n  \"code\": \"VGH-AMB-B12-R6-B7\",\n  \"name\": \"Zone B Aisle 12 Rack 6 Bin 7\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update location' / 'Delete location' can target it.",
+                  "pm.collectionVariables.set('created_location_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/locations/{{location_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "locations",
+                "{{location_write_id}}"
+              ]
+            },
+            "description": "Full replace of `locations/{{location_write_id}}` - PUT overwrites the whole record, so send every field. Point `location_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"warehouse_id\": 1,\n  \"code\": \"VGH-AMB-B12-R6-B7\",\n  \"name\": \"Zone B Aisle 12 Rack 6 Bin 7\",\n  \"created_at\": \"2024-12-08T10:37:19Z\",\n  \"updated_at\": \"2024-12-30T06:59:18Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('location_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete location",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/locations/{{location_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "locations",
+                "{{location_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Transfers",
+      "item": [
+        {
+          "name": "List transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ]
+            },
+            "description": "Every transfer, each with its `items` array inlined from transfer_item.json."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get transfer by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            },
+            "description": "Single transfer including its `items`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items in transfer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_id}}",
+                "items"
+              ]
+            },
+            "description": "Just the `{item_id, amount}` rows."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ]
+            },
+            "description": "`transfer_status` is forced to `Scheduled` and the timestamps are set server-side. `items` is split off into transfer_item.json. Also pushes a message onto the notification worker.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"reference\": \"TRF-000001\",\n  \"from_location_id\": 369,\n  \"to_location_id\": 320,\n  \"transfer_status\": \"Scheduled\",\n  \"items\": [\n    {\n      \"item_id\": 190,\n      \"amount\": 67\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update transfer' / 'Delete transfer' can target it.",
+                  "pm.collectionVariables.set('created_transfer_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update transfer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_write_id}}"
+              ]
+            },
+            "description": "Full replace. Include `items` to replace the transfer lines too; omit it to keep them.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"reference\": \"TRF-000001\",\n  \"from_location_id\": 369,\n  \"to_location_id\": 320,\n  \"transfer_status\": \"Scheduled\",\n  \"created_at\": \"2025-12-02T15:28:59Z\",\n  \"updated_at\": \"2025-12-04T11:14:38Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('transfer_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Commit transfer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_write_id}}/commit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_write_id}}",
+                "commit"
+              ]
+            },
+            "description": "No request body. For every transfer line it subtracts `amount` from `quantity_on_hand` at `from_location_id` and adds it at `to_location_id` (creating that inventory row if needed), sets `transfer_status` to `Processed` and notifies the worker. Not idempotent: committing twice moves the stock twice."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete transfer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_write_id}}"
+              ]
+            },
+            "description": "**No app key in data/user.json grants DELETE on `transfers`**, so this route is unreachable and answers 403. The handler behind it does exist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Transfers move stock between two locations. `commit` is the route that actually touches inventory."
+    },
+    {
+      "name": "Items",
+      "item": [
+        {
+          "name": "List items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items"
+              ]
+            },
+            "description": "All items. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get item by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items/{{item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{item_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Inventory for item",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items/{{item_id}}/inventory",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{item_id}}",
+                "inventory"
+              ]
+            },
+            "description": "All inventory rows (one per location) holding this item."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Inventory totals for item",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items/{{item_id}}/inventory/totals",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{item_id}}",
+                "inventory",
+                "totals"
+              ]
+            },
+            "description": "Aggregated totals across every location: total_expected, total_ordered, total_allocated and total_available (on_hand - allocated)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});",
+                  "pm.test('has the expected fields', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('total_expected');",
+                  "    pm.expect(body).to.have.property('total_ordered');",
+                  "    pm.expect(body).to.have.property('total_allocated');",
+                  "    pm.expect(body).to.have.property('total_available');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"code\": \"ITM-000001\",\n  \"description\": \"Jumbo Summer Sprinkles IJsjes 6 Stuks\",\n  \"barcode\": \"4313291212776\",\n  \"model_number\": \"VS-10414\",\n  \"commodity_code\": 6268604,\n  \"unit_weight\": 0.336,\n  \"item_line_id\": 5,\n  \"item_group_id\": 3,\n  \"item_type_id\": 2,\n  \"min_purchase_qty\": 24,\n  \"case_size\": 6,\n  \"packaging_type\": \"Case\",\n  \"order_multiple\": 1,\n  \"supplier_id\": 17,\n  \"supplier_sku\": \"SKU-9642297\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update item' / 'Delete item' can target it.",
+                  "pm.collectionVariables.set('created_item_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items/{{item_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{item_write_id}}"
+              ]
+            },
+            "description": "Full replace of `items/{{item_write_id}}` - PUT overwrites the whole record, so send every field. Point `item_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"code\": \"ITM-000001\",\n  \"description\": \"Jumbo Summer Sprinkles IJsjes 6 Stuks\",\n  \"barcode\": \"4313291212776\",\n  \"model_number\": \"VS-10414\",\n  \"commodity_code\": 6268604,\n  \"unit_weight\": 0.336,\n  \"item_line_id\": 5,\n  \"item_group_id\": 3,\n  \"item_type_id\": 2,\n  \"min_purchase_qty\": 24,\n  \"case_size\": 6,\n  \"packaging_type\": \"Case\",\n  \"order_multiple\": 1,\n  \"supplier_id\": 17,\n  \"supplier_sku\": \"SKU-9642297\",\n  \"created_at\": \"2025-12-04T08:02:10Z\",\n  \"updated_at\": \"2025-12-26T07:33:27Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('item_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items/{{item_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{item_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed.\n\n**No app key in data/user.json grants DELETE on `items`**, so this route is unreachable and answers 403. The handler behind it does exist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Item lines",
+      "item": [
+        {
+          "name": "List item_lines",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_lines",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_lines"
+              ]
+            },
+            "description": "All item_lines. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get item_line by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_lines/{{item_line_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_lines",
+                "{{item_line_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items in item line",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_lines/{{item_line_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_lines",
+                "{{item_line_id}}",
+                "items"
+              ]
+            },
+            "description": "Items with this item_line_id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create item_line",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_lines",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_lines"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Aardappelen, groente en fruit\",\n  \"description\": \"Jumbo assortment line: Aardappelen, groente en fruit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update item_line' / 'Delete item_line' can target it.",
+                  "pm.collectionVariables.set('created_item_line_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update item_line",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_lines/{{item_line_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_lines",
+                "{{item_line_write_id}}"
+              ]
+            },
+            "description": "Full replace of `item_lines/{{item_line_write_id}}` - PUT overwrites the whole record, so send every field. Point `item_line_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Aardappelen, groente en fruit\",\n  \"description\": \"Jumbo assortment line: Aardappelen, groente en fruit\",\n  \"created_at\": \"2025-08-01T15:30:26Z\",\n  \"updated_at\": \"2025-08-23T22:38:58Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('item_line_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete item_line",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_lines/{{item_line_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_lines",
+                "{{item_line_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Item groups",
+      "item": [
+        {
+          "name": "List item_groups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_groups"
+              ]
+            },
+            "description": "All item_groups. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get item_group by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_groups/{{item_group_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_groups",
+                "{{item_group_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items in item group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_groups/{{item_group_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_groups",
+                "{{item_group_id}}",
+                "items"
+              ]
+            },
+            "description": "Items with this item_group_id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create item_group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_groups"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Vers\",\n  \"description\": \"Temperature/handling regime: Vers\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update item_group' / 'Delete item_group' can target it.",
+                  "pm.collectionVariables.set('created_item_group_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update item_group",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_groups/{{item_group_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_groups",
+                "{{item_group_write_id}}"
+              ]
+            },
+            "description": "Full replace of `item_groups/{{item_group_write_id}}` - PUT overwrites the whole record, so send every field. Point `item_group_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Vers\",\n  \"description\": \"Temperature/handling regime: Vers\",\n  \"created_at\": \"2025-08-01T15:30:26Z\",\n  \"updated_at\": \"2025-08-15T20:20:03Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('item_group_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete item_group",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_groups/{{item_group_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_groups",
+                "{{item_group_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Item types",
+      "item": [
+        {
+          "name": "List item_types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_types"
+              ]
+            },
+            "description": "All item_types. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get item_type by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_types/{{item_type_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_types",
+                "{{item_type_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items of item type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_types/{{item_type_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_types",
+                "{{item_type_id}}",
+                "items"
+              ]
+            },
+            "description": "Items with this item_type_id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create item_type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_types"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Single\",\n  \"description\": \"Packaging tier: Single\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update item_type' / 'Delete item_type' can target it.",
+                  "pm.collectionVariables.set('created_item_type_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update item_type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_types/{{item_type_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_types",
+                "{{item_type_write_id}}"
+              ]
+            },
+            "description": "Full replace of `item_types/{{item_type_write_id}}` - PUT overwrites the whole record, so send every field. Point `item_type_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Single\",\n  \"description\": \"Packaging tier: Single\",\n  \"created_at\": \"2025-08-01T15:30:26Z\",\n  \"updated_at\": \"2025-08-20T18:19:48Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('item_type_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete item_type",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/item_types/{{item_type_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "item_types",
+                "{{item_type_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Suppliers",
+      "item": [
+        {
+          "name": "List suppliers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers"
+              ]
+            },
+            "description": "All suppliers. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get supplier by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers/{{supplier_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers",
+                "{{supplier_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items from supplier",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers/{{supplier_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers",
+                "{{supplier_id}}",
+                "items"
+              ]
+            },
+            "description": "Items with this supplier_id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create supplier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"code\": \"SUP-0001\",\n  \"name\": \"FrieslandCampina Nederland B.V.\",\n  \"address\": \"Jaydreef 711\",\n  \"city\": \"Amersfoort\",\n  \"zip_code\": \"9322HU\",\n  \"province\": \"Utrecht\",\n  \"country\": \"Netherlands\",\n  \"contact_name\": \"Joëlle Huijbrechts\",\n  \"phone_number\": \"+31459-606339\",\n  \"reference\": \"Campina\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update supplier' / 'Delete supplier' can target it.",
+                  "pm.collectionVariables.set('created_supplier_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update supplier",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers/{{supplier_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers",
+                "{{supplier_write_id}}"
+              ]
+            },
+            "description": "Full replace of `suppliers/{{supplier_write_id}}` - PUT overwrites the whole record, so send every field. Point `supplier_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"code\": \"SUP-0001\",\n  \"name\": \"FrieslandCampina Nederland B.V.\",\n  \"address\": \"Jaydreef 711\",\n  \"city\": \"Amersfoort\",\n  \"zip_code\": \"9322HU\",\n  \"province\": \"Utrecht\",\n  \"country\": \"Netherlands\",\n  \"contact_name\": \"Joëlle Huijbrechts\",\n  \"phone_number\": \"+31459-606339\",\n  \"reference\": \"Campina\",\n  \"created_at\": \"2026-05-09T04:44:30Z\",\n  \"updated_at\": \"2026-05-31T09:53:22Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('supplier_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete supplier",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers/{{supplier_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers",
+                "{{supplier_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Inventories",
+      "item": [
+        {
+          "name": "List inventories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/inventories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventories"
+              ]
+            },
+            "description": "All ~4.8k inventory rows."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create / upsert inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/inventories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventories"
+              ]
+            },
+            "description": "Keyed on the composite `(item_id, location_id)`: an existing row is merged, otherwise a new row is appended. There is no surrogate id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": 119,\n  \"location_id\": 399,\n  \"quantity_on_hand\": 458,\n  \"quantity_expected\": 141,\n  \"quantity_ordered\": 1,\n  \"quantity_allocated\": 406\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get inventory by id (404 by design)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/inventories/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventories",
+                "1"
+              ]
+            },
+            "description": "404 on purpose: inventory rows are keyed on `(item_id, location_id)`, so a single id has no meaning. Use `GET /items/{id}/inventory`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update inventory (404 by design)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/inventories/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventories",
+                "1"
+              ]
+            },
+            "description": "404 by design - same composite-key reason. Re-POST the row to upsert it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": 119,\n  \"location_id\": 399,\n  \"quantity_on_hand\": 458,\n  \"quantity_expected\": 141,\n  \"quantity_ordered\": 1,\n  \"quantity_allocated\": 406\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete inventory (404 by design)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/inventories/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventories",
+                "1"
+              ]
+            },
+            "description": "404 by design. No route removes an inventory row.\n\n**No app key in data/user.json grants DELETE on `inventories`**, so this route is unreachable and answers 403. The handler behind it does exist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Inventory is the one resource without per-id routes: reads go through the item routes, writes are upserts on POST."
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "List orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Every order with its `items` inlined. ~4.8k records, so expect a large response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get order by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{order_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{order_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items in order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{order_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{order_id}}",
+                "items"
+              ]
+            },
+            "description": "The `{item_id, amount}` lines of the order."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "`items` is split off into order_item.json.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"client_id\": 123,\n  \"order_date\": \"2025-03-05T04:42:29Z\",\n  \"request_date\": \"2025-03-09T00:27:04Z\",\n  \"reference\": \"ORD-000001\",\n  \"customer_po_number\": \"PO-662159\",\n  \"order_status\": \"Shipped\",\n  \"shipping_notes\": null,\n  \"warehouse_id\": 2,\n  \"ship_to_client_id\": 31,\n  \"bill_to_client_id\": 87,\n  \"items\": [\n    {\n      \"item_id\": 82,\n      \"amount\": 24\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update order' / 'Delete order' can target it.",
+                  "pm.collectionVariables.set('created_order_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{order_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{order_write_id}}"
+              ]
+            },
+            "description": "Full replace. Including `items` also runs the allocation sync described below.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"client_id\": 123,\n  \"order_date\": \"2025-03-05T04:42:29Z\",\n  \"request_date\": \"2025-03-09T00:27:04Z\",\n  \"reference\": \"ORD-000001\",\n  \"customer_po_number\": \"PO-662159\",\n  \"order_status\": \"Shipped\",\n  \"shipping_notes\": null,\n  \"warehouse_id\": 2,\n  \"ship_to_client_id\": 31,\n  \"bill_to_client_id\": 87,\n  \"created_at\": \"2025-03-05T04:42:29Z\",\n  \"updated_at\": \"2025-03-08T00:23:16Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('order_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update items in order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{order_write_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{order_write_id}}",
+                "items"
+              ]
+            },
+            "description": "Body is a bare JSON array of `{item_id, amount}`. Replaces all order lines and shifts `quantity_allocated` by the delta on the inventory row that holds the most stock for each item.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"item_id\": 82,\n    \"amount\": 12\n  },\n  {\n    \"item_id\": 119,\n    \"amount\": 6\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete order",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{order_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{order_write_id}}"
+              ]
+            },
+            "description": "**No app key in data/user.json grants DELETE on `orders`**, so this route is unreachable and answers 403. The handler behind it does exist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "List clients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "description": "All clients. No pagination or filtering - the full seed set comes back in one response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get client by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients/{{client_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{client_id}}"
+              ]
+            },
+            "description": "Single record. An unknown id is a 200 with a `null` body, not a 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Orders for client",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients/{{client_id}}/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{client_id}}",
+                "orders"
+              ]
+            },
+            "description": "Orders where the client is the ordering, ship-to or bill-to party."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_shipping_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "description": "`created_at` / `updated_at` are set server-side; the `id` must be in the body. Returns 201 with an empty body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Jumbo Amersfoort Leusderweg\",\n  \"address\": \"Leusderweg 152\",\n  \"city\": \"Amersfoort\",\n  \"zip_code\": \"9704WL\",\n  \"province\": \"Drenthe\",\n  \"country\": \"Netherlands\",\n  \"contact_name\": \"Thomas Spruyt\",\n  \"contact_phone\": \"(0252) 880957\",\n  \"contact_email\": \"heerkenssofia@koninklijke.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update client' / 'Delete client' can target it.",
+                  "pm.collectionVariables.set('created_client_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update client",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_shipping_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients/{{client_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{client_write_id}}"
+              ]
+            },
+            "description": "Full replace of `clients/{{client_write_id}}` - PUT overwrites the whole record, so send every field. Point `client_write_id` at the row you want to edit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"name\": \"Jumbo Amersfoort Leusderweg\",\n  \"address\": \"Leusderweg 152\",\n  \"city\": \"Amersfoort\",\n  \"zip_code\": \"9704WL\",\n  \"province\": \"Drenthe\",\n  \"country\": \"Netherlands\",\n  \"contact_name\": \"Thomas Spruyt\",\n  \"contact_phone\": \"(0252) 880957\",\n  \"contact_email\": \"heerkenssofia@koninklijke.com\",\n  \"created_at\": \"2024-05-02T19:57:33Z\",\n  \"updated_at\": \"2024-05-20T21:17:44Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Keep the id in the body equal to the id in the URL.",
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('client_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete client",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_facility_management}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients/{{client_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{client_write_id}}"
+              ]
+            },
+            "description": "Returns 200 whether or not the id existed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Shipments",
+      "item": [
+        {
+          "name": "List shipments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments"
+              ]
+            },
+            "description": "Every shipment with its `items` inlined. ~6.1k records."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get shipment by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments/{{shipment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipment_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Orders in shipment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments/{{shipment_id}}/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipment_id}}",
+                "orders"
+              ]
+            },
+            "description": "`shipment.order_id` is 1:1 in this schema, so the array holds at most one order id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Items in shipment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments/{{shipment_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipment_id}}",
+                "items"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('body is a JSON array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"reference\": \"SHP-000001\",\n  \"order_id\": 1,\n  \"shipment_date\": \"2025-03-05T18:51:53Z\",\n  \"shipment_type\": \"Outgoing\",\n  \"shipment_status\": \"Transit\",\n  \"carrier_name\": \"GLS\",\n  \"shipping_method\": \"Standard\",\n  \"payment_type\": \"Automated\",\n  \"items\": [\n    {\n      \"item_id\": 82,\n      \"amount\": 6\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fresh id so the create can be re-run without colliding with",
+                  "// the seed data (ids there are well below 900000).",
+                  "pm.collectionVariables.set('new_id', 900000 + Math.floor(Math.random() * 99999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Remember the id so 'Update shipment' / 'Delete shipment' can target it.",
+                  "pm.collectionVariables.set('created_shipment_id', pm.collectionVariables.get('new_id'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update shipment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments/{{shipment_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipment_write_id}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{new_id}},\n  \"reference\": \"SHP-000001\",\n  \"order_id\": 1,\n  \"shipment_date\": \"2025-03-05T18:51:53Z\",\n  \"shipment_type\": \"Outgoing\",\n  \"shipment_status\": \"Transit\",\n  \"carrier_name\": \"GLS\",\n  \"shipping_method\": \"Standard\",\n  \"payment_type\": \"Automated\",\n  \"created_at\": \"2025-03-05T18:51:53Z\",\n  \"updated_at\": \"2025-03-06T21:12:23Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('new_id', pm.collectionVariables.get('shipment_write_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update orders in shipment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments/{{shipment_write_id}}/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipment_write_id}}",
+                "orders"
+              ]
+            },
+            "description": "Body is a bare JSON array of order ids.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  1\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update items in shipment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments/{{shipment_write_id}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipment_write_id}}",
+                "items"
+              ]
+            },
+            "description": "Body is a bare JSON array of `{item_id, amount}`. Replaces the shipment lines and keeps `quantity_ordered` in sync on the inventory row with the most stock for each item.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"item_id\": 82,\n    \"amount\": 3\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete shipment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shipments/{{shipment_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipments",
+                "{{shipment_write_id}}"
+              ]
+            },
+            "description": "**No app key in data/user.json grants DELETE on `shipments`**, so this route is unreachable and answers 403. The handler behind it does exist."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "99 - Scenario: commit a transfer",
+      "item": [
+        {
+          "name": "1. The transfer before commit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_write_id}}"
+              ]
+            },
+            "description": "Records the transfer lines and status the commit should act on."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const t = pm.response.json();",
+                  "pm.collectionVariables.set('scenario_item_id', t.items.length ? t.items[0].item_id : 119);",
+                  "pm.test('transfer exists', function () {",
+                  "    pm.expect(t).to.not.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Inventory totals before commit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items/{{scenario_item_id}}/inventory/totals",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{scenario_item_id}}",
+                "inventory",
+                "totals"
+              ]
+            },
+            "description": "Stores `total_available` so step 4 can compare."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('available_before', pm.response.json().total_available);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Commit the transfer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_write_id}}/commit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_write_id}}",
+                "commit"
+              ]
+            },
+            "description": "Moves the stock and flips the status to `Processed`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Inventory totals after commit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/items/{{scenario_item_id}}/inventory/totals",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{scenario_item_id}}",
+                "inventory",
+                "totals"
+              ]
+            },
+            "description": "A move between two locations neither creates nor destroys stock, so the total available is unchanged."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('total_available is unchanged by an internal move', function () {",
+                  "    const before = Number(pm.collectionVariables.get('available_before'));",
+                  "    pm.expect(pm.response.json().total_available).to.eql(before);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Transfer is Processed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "API_KEY",
+                "value": "{{api_key_receiving_station}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/transfers/{{transfer_write_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_write_id}}"
+              ]
+            },
+            "description": "**This assertion fails against the API as it stands** - see 'Known issues' in the collection description: the commit handler saves a different pool instance than the one it mutated, so the new status is never written to disk."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('status is Processed', function () {",
+                  "    pm.expect(pm.response.json().transfer_status).to.eql('Processed');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Run this folder top to bottom with the Collection Runner. It walks the one route in the API that has real side effects. Step 5 documents a persistence bug and currently fails on purpose."
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "new_id",
+      "value": "999999",
+      "type": "string"
+    },
+    {
+      "key": "warehouse_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "location_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "transfer_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_line_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_group_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_type_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "supplier_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "order_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "shipment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "warehouse_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "location_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "transfer_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_line_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_group_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "item_type_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "supplier_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "client_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "order_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "shipment_write_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "created_warehouse_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_location_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_transfer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_item_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_item_line_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_item_group_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_item_type_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_supplier_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_order_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_shipment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "scenario_item_id",
+      "value": "119",
+      "type": "string"
+    },
+    {
+      "key": "available_before",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
