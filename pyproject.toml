@@ -5,3 +5,14 @@ description = "School project for Cargohub WMS API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "requests>=2.34.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["api"]
+addopts = "-rxX"
