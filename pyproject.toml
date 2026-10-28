@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "School project for Cargohub WMS API"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.162.0",
+    "sqlmodel>=0.0.48",
+    "uv>=0.13.6",
+]
 
 [dependency-groups]
 dev = [
