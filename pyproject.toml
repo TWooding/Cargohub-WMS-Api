@@ -1,18 +1,24 @@
 [project]
 name = "cargohub-wms-api"
-version = "0.1.0"
+version = "2.0.0"
 description = "School project for Cargohub WMS API"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlmodel>=0.0.22",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.6",
+]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
-    "requests>=2.34.2",
+    "pytest>=8.3",
+    "httpx>=0.28",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["api"]
+pythonpath = ["."]
 addopts = "-rxX"
