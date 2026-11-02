@@ -12,6 +12,19 @@ IMPLEMENTED = {
     ("POST", "/warehouses"),
     ("PUT", "/warehouses/{warehouse_id}"),
     ("DELETE", "/warehouses/{warehouse_id}"),
+    # Auth (zie tests/test_auth_system.py)
+    ("POST", "/auth/login"),
+    ("POST", "/auth/refresh"),
+    ("POST", "/auth/token"),
+    ("POST", "/auth/logout"),
+    ("GET", "/auth/me"),
+    ("GET", "/api-keys"),
+    ("POST", "/api-keys"),
+    ("DELETE", "/api-keys/{key_pk}"),
+    ("GET", "/users"),
+    ("POST", "/users"),
+    ("PUT", "/users/{user_id}"),
+    ("GET", "/roles"),
 }
 
 

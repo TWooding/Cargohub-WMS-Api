@@ -21,7 +21,11 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cargohub}:${POSTGRES_PASSWORD:-cargohub}@db:5432/${POSTGRES_DB:-cargohub}
-      API_KEYS: ${API_KEYS:-dev-key}
+      # Alleen voor lokale dev: zet in productie een eigen JWT_SECRET en COOKIE_SECURE=true.
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-dev-only-secret}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-change-me-please-123}
     # Hot reload: local code is mounted into the container.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips=*
     volumes:
