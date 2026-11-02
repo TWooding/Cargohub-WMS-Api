@@ -1,0 +1,98 @@
+# Builds, tests, and publishes the API image to GHCR.
+# Published image: ghcr.io/twooding/cargohub-wms-api
+# (docker/metadata-action lowercases the mixed-case repo name automatically.)
+name: Docker deploy
+
+on:
+  push:
+    branches: [dev, main]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv with Python 3.11
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --frozen # dev group (pytest, httpx) is installed by default
+
+      - name: Run tests
+        run: uv run pytest
+
+  docker:
+    name: Build and push image
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write # push to GHCR with the built-in GITHUB_TOKEN
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # On pull_request (especially from forks) the token is read-only:
+      # build for validation only, skip login and push.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # dev push -> dev, latest, sha-abc1234 | main push -> main, sha-...
+          # tag v2.1.0 -> 2.1.0, 2.1, latest    | PR  -> pr-12 (not pushed)
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64 # add linux/arm64 here for e.g. Raspberry Pi
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          sbom: true # attach SBOM + provenance attestations for supply-chain traceability
+          provenance: mode=max
