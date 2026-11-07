@@ -1,12 +1,10 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, TIMESTAMP, text
+from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Enum, Field, SQLModel
-from DatabaseEnums import OrderStatus
 
-class Item(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+class ItemBase(SQLModel):
     item_line_id: int = Field(foreign_key='ItemLine.id')
     item_group_id: int = Field(foreign_key='ItemGroup.id')
     item_type_id: int = Field(foreign_key='ItemType.id')
@@ -23,14 +21,19 @@ class Item(SQLModel, table=True):
     order_multiple: int
     packaging_type: str
     supplier_sku: str
-    created_at: Optional[datetime] = Field(sa_column=Column(
-        TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=text("CURRENT_TIMESTAMP"),
-    ))
-    updated_at: Optional[datetime] = Field(sa_column=Column(
-        TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=text("CURRENT_TIMESTAMP"),
-        server_onupdate=text("CURRENT_TIMESTAMP"),
-    ))
+
+
+class Item(ItemBase, table=True):
+    """Database table."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
+    )
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(
+            TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        ),
+    )
