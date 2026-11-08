@@ -3,12 +3,12 @@ from typing import Optional
 
 from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Enum, Field, SQLModel
-from databaseEnums import TransferStatus
+from app.backend.models.databaseEnums import TransferStatus
 
 
 class TransferBase(SQLModel):
-    from_location_id: int = Field(foreign_key='Location.id')
-    to_location_id: int = Field(foreign_key='Location.id')
+    from_location_id: int = Field(foreign_key='location.id')
+    to_location_id: int = Field(foreign_key='location.id')
     reference: str
     transfer_status: Optional[TransferStatus] = Field(default=TransferStatus.scheduled, sa_column=Column(Enum(TransferStatus)))
 

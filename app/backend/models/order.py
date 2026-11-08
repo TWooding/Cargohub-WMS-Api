@@ -3,13 +3,15 @@ from typing import Optional
 
 from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Enum, Field, SQLModel
-from databaseEnums import OrderStatus
+
+from app.backend.models.databaseEnums import OrderStatus
+
 
 class OrderBase(SQLModel):
-    client_id: int = Field(foreign_key='Client.id')
-    warehouse_id: int = Field(foreign_key='Warehouse.id')
-    ship_to_client_id: int = Field(foreign_key='Client.id')
-    bill_to_client_id: int = Field(foreign_key='Client.id')
+    client_id: int = Field(foreign_key='client.id')
+    warehouse_id: int = Field(foreign_key='warehouse.id')
+    ship_to_client_id: int = Field(foreign_key='client.id')
+    bill_to_client_id: int = Field(foreign_key='client.id')
     order_date: datetime = Field(nullable=False)
     request_date: datetime = Field(nullable=False)
     reference: str

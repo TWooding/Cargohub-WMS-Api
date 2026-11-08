@@ -4,9 +4,10 @@ from typing import Optional
 from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Field, SQLModel
 
+
 class InventoryBase(SQLModel):
-    item_id: int = Field(foreign_key='Inventory.id', primary_key=True)
-    location_id: int = Field(foreign_key='Location.id', primary_key=True)
+    item_id: int = Field(foreign_key='item.id', primary_key=True)
+    location_id: int = Field(foreign_key='location.id', primary_key=True)
     quantity_on_hand: int
     quantity_expected: int
     quantity_allocated: int

@@ -13,6 +13,8 @@ class ItemGroupBase(SQLModel):
 class ItemGroup(ItemGroupBase, table=True):
     """Database table."""
 
+    __tablename__ = "item_group"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = Field(
         default=None,

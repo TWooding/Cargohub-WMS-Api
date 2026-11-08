@@ -13,6 +13,8 @@ class ItemTypeBase(SQLModel):
 class ItemType(ItemTypeBase, table=True):
     """Database table."""
 
+    __tablename__ = "item_type"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = Field(
         default=None,

@@ -4,11 +4,12 @@ from typing import Optional
 from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Enum, Field, SQLModel
 
+
 class ItemBase(SQLModel):
-    item_line_id: int = Field(foreign_key='ItemLine.id')
-    item_group_id: int = Field(foreign_key='ItemGroup.id')
-    item_type_id: int = Field(foreign_key='ItemType.id')
-    supplier_id: int = Field(foreign_key='Supplier.id')
+    item_line_id: int = Field(foreign_key='item_line.id')
+    item_group_id: int = Field(foreign_key='item_group.id')
+    item_type_id: int = Field(foreign_key='item_type.id')
+    supplier_id: int = Field(foreign_key='supplier.id')
     item_code: str
     code: str
     description: str

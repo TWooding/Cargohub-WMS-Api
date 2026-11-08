@@ -5,7 +5,7 @@ from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Field, SQLModel
 
 class LocationBase(SQLModel):
-    warehouse_id: int = Field(foreign_key='Warehouse.id')
+    warehouse_id: int = Field(foreign_key='warehouse.id')
     code: str
     name: str
 

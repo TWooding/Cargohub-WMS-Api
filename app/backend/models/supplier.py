@@ -5,7 +5,6 @@ from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Field, SQLModel
 
 class SupplierBase(SQLModel):
-    id: Optional[int] = Field(default=None, primary_key=True)
     code: str
     name: str
     address: str
