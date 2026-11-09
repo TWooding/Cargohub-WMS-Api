@@ -13,7 +13,7 @@ class SupplierBase(SQLModel):
     province: str
     country: str
     contact_name: str
-    contact_phone: str
+    contact_phone: str | None = None
     reference: str
 
 
