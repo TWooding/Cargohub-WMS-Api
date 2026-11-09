@@ -1,0 +1,2452 @@
+{
+  "info": {
+    "name": "CargoHUB WMS API v2",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Gegenereerd uit de OpenAPI van de app. Run eerst 'auth > POST /auth/login' (mode=token); de tokens worden automatisch opgeslagen."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "root_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "base_url",
+      "value": "{{root_url}}/api/v2"
+    },
+    {
+      "key": "username",
+      "value": "admin"
+    },
+    {
+      "key": "password",
+      "value": "change-me-please-123"
+    },
+    {
+      "key": "api_key",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "GET /health - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{root_url}}/health",
+              "host": [
+                "{{root_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /health/db - Health Db",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{root_url}}/health/db",
+              "host": [
+                "{{root_url}}"
+              ],
+              "path": [
+                "health",
+                "db"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "POST /auth/login - Inloggen met username + wachtwoord",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"mode\": \"token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', j.access_token);",
+                  "pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "pm.test('login ok', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/refresh - Refresh token inwisselen (rotatie)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', j.access_token);",
+                  "pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "pm.test('refresh ok', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/token - API key inwisselen voor een kort bearer token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "token"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/logout - Uitloggen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /auth/me - Huidige principal + permissielijst",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "api-keys",
+      "item": [
+        {
+          "name": "POST /api-keys - API key uitgeven",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api-keys",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api-keys"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"string\",\n  \"role_id\": 1,\n  \"client_id\": 1,\n  \"expires_in_days\": 1,\n  \"ip_allowlist\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /api-keys - API keys (zonder geheim)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api-keys",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api-keys"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api-keys/{key_pk} - API key intrekken",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api-keys/:key_pk",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api-keys",
+                ":key_pk"
+              ],
+              "variable": [
+                {
+                  "key": "key_pk",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "clients",
+      "item": [
+        {
+          "name": "GET /clients - Lijst van klanten",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/clients",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /clients - Klant aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clients",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /clients/{client_id} - Klant ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/clients/:client_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clients",
+                ":client_id"
+              ],
+              "variable": [
+                {
+                  "key": "client_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /clients/{client_id} - Klant bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clients/:client_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clients",
+                ":client_id"
+              ],
+              "variable": [
+                {
+                  "key": "client_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /clients/{client_id} - Klant verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/clients/:client_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clients",
+                ":client_id"
+              ],
+              "variable": [
+                {
+                  "key": "client_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /clients/{client_id}/orders - Orders van klant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/clients/:client_id/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clients",
+                ":client_id",
+                "orders"
+              ],
+              "variable": [
+                {
+                  "key": "client_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "inventories",
+      "item": [
+        {
+          "name": "GET /inventories - Lijst van voorraadregels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/inventories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inventories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /inventories - Voorraadregel aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/inventories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "inventories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "item_groups",
+      "item": [
+        {
+          "name": "GET /item_groups - Lijst van productgroepen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_groups"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /item_groups - Productgroep aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/item_groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_groups"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /item_groups/{item_group_id} - Productgroep ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_groups/:item_group_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_groups",
+                ":item_group_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_group_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /item_groups/{item_group_id} - Productgroep bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/item_groups/:item_group_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_groups",
+                ":item_group_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_group_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /item_groups/{item_group_id} - Productgroep verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_groups/:item_group_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_groups",
+                ":item_group_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_group_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /item_groups/{item_group_id}/items - Items in productgroep",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_groups/:item_group_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_groups",
+                ":item_group_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "item_group_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "item_lines",
+      "item": [
+        {
+          "name": "GET /item_lines - Lijst van productlijnen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_lines",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_lines"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /item_lines - Productlijn aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/item_lines",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_lines"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /item_lines/{item_line_id} - Productlijn ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_lines/:item_line_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_lines",
+                ":item_line_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_line_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /item_lines/{item_line_id} - Productlijn bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/item_lines/:item_line_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_lines",
+                ":item_line_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_line_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /item_lines/{item_line_id} - Productlijn verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_lines/:item_line_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_lines",
+                ":item_line_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_line_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /item_lines/{item_line_id}/items - Items in productlijn",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_lines/:item_line_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_lines",
+                ":item_line_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "item_line_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "item_types",
+      "item": [
+        {
+          "name": "GET /item_types - Lijst van producttypes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /item_types - Producttype aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/item_types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_types"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /item_types/{item_type_id} - Producttype ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_types/:item_type_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_types",
+                ":item_type_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_type_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /item_types/{item_type_id} - Producttype bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/item_types/:item_type_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_types",
+                ":item_type_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_type_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /item_types/{item_type_id} - Producttype verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_types/:item_type_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_types",
+                ":item_type_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_type_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /item_types/{item_type_id}/items - Items van producttype",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/item_types/:item_type_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "item_types",
+                ":item_type_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "item_type_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "items",
+      "item": [
+        {
+          "name": "GET /items - Lijst van items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /items - Item aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /items/{item_id} - Item ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items/:item_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                ":item_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /items/{item_id} - Item bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/items/:item_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                ":item_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /items/{item_id} - Item verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items/:item_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                ":item_id"
+              ],
+              "variable": [
+                {
+                  "key": "item_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /items/{item_id}/inventory - Voorraad van item",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items/:item_id/inventory",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                ":item_id",
+                "inventory"
+              ],
+              "variable": [
+                {
+                  "key": "item_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /items/{item_id}/inventory/totals - Voorraadtotalen van item",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items/:item_id/inventory/totals",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                ":item_id",
+                "inventory",
+                "totals"
+              ],
+              "variable": [
+                {
+                  "key": "item_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "locations",
+      "item": [
+        {
+          "name": "GET /locations - Lijst van locaties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "locations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /locations - Locatie aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "locations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /locations/{location_id} - Locatie ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/locations/:location_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "locations",
+                ":location_id"
+              ],
+              "variable": [
+                {
+                  "key": "location_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /locations/{location_id} - Locatie bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/locations/:location_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "locations",
+                ":location_id"
+              ],
+              "variable": [
+                {
+                  "key": "location_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /locations/{location_id} - Locatie verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/locations/:location_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "locations",
+                ":location_id"
+              ],
+              "variable": [
+                {
+                  "key": "location_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "item": [
+        {
+          "name": "GET /orders - Lijst van orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /orders - Order aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /orders/{order_id} - Order ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/:order_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /orders/{order_id} - Order bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/:order_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /orders/{order_id} - Order verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/:order_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /orders/{order_id}/items - Items in order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/:order_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                ":order_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /orders/{order_id}/items - Items in order vervangen",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/orders/:order_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "orders",
+                ":order_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "roles",
+      "item": [
+        {
+          "name": "GET /roles - Rollen met permissies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/roles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "shipments",
+      "item": [
+        {
+          "name": "GET /shipments - Lijst van zendingen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /shipments - Zending aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shipments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /shipments/{shipment_id} - Zending ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments/:shipment_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                ":shipment_id"
+              ],
+              "variable": [
+                {
+                  "key": "shipment_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /shipments/{shipment_id} - Zending bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shipments/:shipment_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                ":shipment_id"
+              ],
+              "variable": [
+                {
+                  "key": "shipment_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /shipments/{shipment_id} - Zending verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments/:shipment_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                ":shipment_id"
+              ],
+              "variable": [
+                {
+                  "key": "shipment_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /shipments/{shipment_id}/orders - Orders in zending",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments/:shipment_id/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                ":shipment_id",
+                "orders"
+              ],
+              "variable": [
+                {
+                  "key": "shipment_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /shipments/{shipment_id}/orders - Orders in zending vervangen",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shipments/:shipment_id/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                ":shipment_id",
+                "orders"
+              ],
+              "variable": [
+                {
+                  "key": "shipment_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /shipments/{shipment_id}/items - Items in zending",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shipments/:shipment_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                ":shipment_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "shipment_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /shipments/{shipment_id}/items - Items in zending vervangen",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shipments/:shipment_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shipments",
+                ":shipment_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "shipment_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "suppliers",
+      "item": [
+        {
+          "name": "GET /suppliers - Lijst van leveranciers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /suppliers - Leverancier aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /suppliers/{supplier_id} - Leverancier ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/suppliers/:supplier_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers",
+                ":supplier_id"
+              ],
+              "variable": [
+                {
+                  "key": "supplier_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /suppliers/{supplier_id} - Leverancier bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/suppliers/:supplier_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers",
+                ":supplier_id"
+              ],
+              "variable": [
+                {
+                  "key": "supplier_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /suppliers/{supplier_id} - Leverancier verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/suppliers/:supplier_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers",
+                ":supplier_id"
+              ],
+              "variable": [
+                {
+                  "key": "supplier_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /suppliers/{supplier_id}/items - Items van leverancier",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/suppliers/:supplier_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers",
+                ":supplier_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "supplier_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transfers",
+      "item": [
+        {
+          "name": "GET /transfers - Lijst van transfers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /transfers - Transfer aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transfers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /transfers/{transfer_id} - Transfer ophalen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/transfers/:transfer_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                ":transfer_id"
+              ],
+              "variable": [
+                {
+                  "key": "transfer_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /transfers/{transfer_id} - Transfer bijwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transfers/:transfer_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                ":transfer_id"
+              ],
+              "variable": [
+                {
+                  "key": "transfer_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /transfers/{transfer_id} - Transfer verwijderen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/transfers/:transfer_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                ":transfer_id"
+              ],
+              "variable": [
+                {
+                  "key": "transfer_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /transfers/{transfer_id}/items - Items in transfer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/transfers/:transfer_id/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                ":transfer_id",
+                "items"
+              ],
+              "variable": [
+                {
+                  "key": "transfer_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /transfers/{transfer_id}/commit - Transfer verwerken",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transfers/:transfer_id/commit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transfers",
+                ":transfer_id",
+                "commit"
+              ],
+              "variable": [
+                {
+                  "key": "transfer_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "users",
+      "item": [
+        {
+          "name": "GET /users - Gebruikers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /users - Gebruiker aanmaken",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"string\",\n  \"email\": \"string\",\n  \"password\": \"string\",\n  \"role_id\": 1,\n  \"client_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /users/{user_id} - Gebruiker bijwerken (rol, actief, e-mail)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/:user_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"string\",\n  \"role_id\": 1,\n  \"client_id\": 1,\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "warehouses",
+      "item": [
+        {
+          "name": "GET /warehouses - List Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/warehouses?offset=&limit=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "warehouses"
+              ],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /warehouses - Create Warehouse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/warehouses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "warehouses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"string\",\n  \"name\": \"string\",\n  \"address\": \"string\",\n  \"city\": \"string\",\n  \"zip_code\": \"string\",\n  \"province\": \"string\",\n  \"country\": \"string\",\n  \"contact_name\": \"string\",\n  \"contact_phone\": \"string\",\n  \"contact_email\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /warehouses/{warehouse_id} - Get Warehouse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/warehouses/:warehouse_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "warehouses",
+                ":warehouse_id"
+              ],
+              "variable": [
+                {
+                  "key": "warehouse_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /warehouses/{warehouse_id} - Update Warehouse",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/warehouses/:warehouse_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "warehouses",
+                ":warehouse_id"
+              ],
+              "variable": [
+                {
+                  "key": "warehouse_id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"string\",\n  \"name\": \"string\",\n  \"address\": \"string\",\n  \"city\": \"string\",\n  \"zip_code\": \"string\",\n  \"province\": \"string\",\n  \"country\": \"string\",\n  \"contact_name\": \"string\",\n  \"contact_phone\": \"string\",\n  \"contact_email\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /warehouses/{warehouse_id} - Delete Warehouse",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/warehouses/:warehouse_id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "warehouses",
+                ":warehouse_id"
+              ],
+              "variable": [
+                {
+                  "key": "warehouse_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /warehouses/{warehouse_id}/locations - Locaties in magazijn",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/warehouses/:warehouse_id/locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "warehouses",
+                ":warehouse_id",
+                "locations"
+              ],
+              "variable": [
+                {
+                  "key": "warehouse_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
