@@ -5,13 +5,14 @@ description = "School project for Cargohub WMS API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115",
+    "fastapi>=0.162",
     "uvicorn[standard]>=0.32",
-    "sqlmodel>=0.0.22",
+    "sqlmodel>=0.0.48",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.6",
     "argon2-cffi>=25.1.0",
     "pyjwt>=2.15.1",
+    "uv>=0.13.6",
 ]
 
 [dependency-groups]
