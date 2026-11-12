@@ -8,7 +8,10 @@ from app.backend.models.databaseEnums import ShipmentStatus, ShipmentType
 class ShipmentBase(SQLModel):
     order_id: int = Field(default=None, foreign_key='order.id')
     reference: str
-    shipment_date: datetime = Field(nullable=False)
+    shipment_date: datetime = Field(
+        default=None,
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
     shipment_status: Optional[ShipmentStatus] = Field(default=ShipmentStatus.scheduled, sa_column=Column(Enum(ShipmentStatus)))
     shipment_type: ShipmentType = Field(default=None, sa_column=Column(Enum(ShipmentType)))
     carrier_name: str

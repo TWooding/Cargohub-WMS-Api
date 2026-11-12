@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 
 from app.frontend.endpoints import (
+    api_keys,
+    auth,
     clients,
     health,
     inventories,
@@ -13,16 +15,22 @@ from app.frontend.endpoints import (
     shipments,
     suppliers,
     transfers,
+    users,
     warehouses,
 )
-from app.middleware.auth import require_api_key
+from app.middleware.auth import require_route_permission
 
-# Public routes (no API key)
+# Public routes (geen authenticatie)
 public_router = APIRouter()
 public_router.include_router(health.router)
 
-# Protected routes: every endpoint here requires a valid API_KEY header
-api_router = APIRouter(dependencies=[Depends(require_api_key)])
+# /auth/*: maakt de identiteit aan (login, refresh, ...) en heeft zelf geen permissie nodig
+auth_router = APIRouter()
+auth_router.include_router(auth.router)
+
+# Protected routes: de default guard eist de permissie `<resource>:<method>` voor de principal
+# (sessie, bearer of API key). Een resource die niet in de permissiematrix staat, geeft 403.
+api_router = APIRouter(dependencies=[Depends(require_route_permission)])
 api_router.include_router(warehouses.router)
 api_router.include_router(locations.router)
 api_router.include_router(transfers.router)
@@ -35,3 +43,5 @@ api_router.include_router(suppliers.router)
 api_router.include_router(orders.router)
 api_router.include_router(clients.router)
 api_router.include_router(shipments.router)
+api_router.include_router(api_keys.router)
+api_router.include_router(users.router)
