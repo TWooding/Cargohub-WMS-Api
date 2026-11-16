@@ -15,14 +15,14 @@ class ItemLine(ItemLineBase, table=True):
 
     __tablename__ = "item_line"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: Optional[datetime] = Field(
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
         ),
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True),

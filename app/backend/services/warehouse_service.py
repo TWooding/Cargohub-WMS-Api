@@ -11,7 +11,7 @@ def list_warehouses(
     return list(session.exec(select(Warehouse).offset(offset).limit(limit)).all())
 
 
-def get_warehouse(session: Session, warehouse_id: int) -> Optional[Warehouse]:
+def get_warehouse(session: Session, warehouse_id: int) -> Warehouse | None:
     return session.get(Warehouse, warehouse_id)
 
 

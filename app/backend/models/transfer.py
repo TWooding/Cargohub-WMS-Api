@@ -10,7 +10,7 @@ class TransferBase(SQLModel):
     from_location_id: int = Field(foreign_key="location.id")
     to_location_id: int = Field(foreign_key="location.id")
     reference: str
-    transfer_status: Optional[TransferStatus] = Field(
+    transfer_status: TransferStatus | None = Field(
         default=TransferStatus.scheduled, sa_column=Column(Enum(TransferStatus))
     )
 
@@ -18,14 +18,14 @@ class TransferBase(SQLModel):
 class Transfer(TransferBase, table=True):
     """Database table."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: Optional[datetime] = Field(
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
         ),
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True),

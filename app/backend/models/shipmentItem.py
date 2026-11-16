@@ -4,7 +4,7 @@ from sqlmodel import Field, SQLModel
 
 
 class ShipmentItemBase(SQLModel):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     shipment_id: int = Field(foreign_key="shipment.id")
     amount: int
 

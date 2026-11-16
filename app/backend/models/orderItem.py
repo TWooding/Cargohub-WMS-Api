@@ -13,4 +13,4 @@ class OrderItemBase(SQLModel):
 class OrderItem(OrderItemBase, table=True):
     __tablename__ = "order_item"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)

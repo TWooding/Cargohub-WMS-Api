@@ -16,7 +16,7 @@ class OrderBase(SQLModel):
     request_date: datetime = Field(nullable=False)
     reference: str
     customer_po_number: str
-    order_status: Optional[OrderStatus] = Field(
+    order_status: OrderStatus | None = Field(
         default=OrderStatus.pending, sa_column=Column(Enum(OrderStatus))
     )
     shipping_notes: str
@@ -25,14 +25,14 @@ class OrderBase(SQLModel):
 class Order(OrderBase, table=True):
     """Database table."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: Optional[datetime] = Field(
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
         ),
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True),
