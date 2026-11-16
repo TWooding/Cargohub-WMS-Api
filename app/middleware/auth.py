@@ -45,7 +45,7 @@ def _unauth() -> HTTPException:
     )
 
 
-def _perms(role) -> frozenset[str]:
+def _perms(role: Principal) -> frozenset[str]:
     return frozenset(p.key for p in role.permissions)
 
 

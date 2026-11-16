@@ -1,0 +1,10 @@
+- id: ruff-format
+  name: ruff format application code
+  description: "Runs Ruff on pre commit to format application code. This will modify files in place."
+  entry: ruff format --exclude "./legacy" --force-exclude
+  language: python
+  types_or: [python, pyi, jupyter, markdown]
+  args: []
+  require_serial: true
+  additional_dependencies: []
+  minimum_pre_commit_version: "2.9.2"

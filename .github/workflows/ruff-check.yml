@@ -2,7 +2,7 @@
 # Ruff reads its configuration from [tool.ruff] in pyproject.toml:
 # legacy/ is excluded (reference-only, not part of the Docker image) and
 # FastAPI's Depends()/Query() are allowed in argument defaults.
-name: Ruff
+name: Ruff check
 
 on:
   push:
@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   ruff:
-    name: Lint
+    name: Ruff check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -32,3 +32,4 @@ jobs:
         uses: astral-sh/ruff-action@v3
         with:
           version: "0.17.5" # pinned; bump deliberately to pick up new rules
+          exclude: "./legacy"

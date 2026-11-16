@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Column, TIMESTAMP, func
+from sqlalchemy import TIMESTAMP, Column, func
 from sqlmodel import Field, SQLModel
 
 
@@ -16,13 +15,13 @@ class InventoryBase(SQLModel):
 class Inventory(InventoryBase, table=True):
     """Database table."""
 
-    created_at: Optional[datetime] = Field(
+    created_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
         ),
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True),

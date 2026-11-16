@@ -1,28 +1,29 @@
-from sqlmodel import Session, create_engine, select, func
+import json
+
+from sqlmodel import Session, create_engine, func, select
 
 from app.backend.models import (
-    Warehouse,
     Client,
+    Inventory,
+    Item,
     ItemGroup,
     ItemLine,
     ItemType,
-    Supplier,
-    Item,
-    Inventory,
     Location,
     Order,
     OrderItem,
     Shipment,
     ShipmentItem,
+    Supplier,
     Transfer,
     TransferItem,
+    Warehouse,
 )
 from app.core.config import get_settings
-import json
 
 engine = create_engine(get_settings().database_url, pool_pre_ping=True)
 
-tables = {
+tables: dict[str, type] = {
     "warehouse": Warehouse,
     "client": Client,
     "item_group": ItemGroup,
@@ -41,7 +42,7 @@ tables = {
 }
 
 
-def seed_table(table_class, file_name):
+def seed_table(table_class: type, file_name: str):
     with Session(engine) as session:
         if session.exec(select(func.count()).select_from(table_class)).one() != 0:
             return

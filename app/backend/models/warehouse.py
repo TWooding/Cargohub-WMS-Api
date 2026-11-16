@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import TIMESTAMP, Column, func
 from sqlmodel import Field, SQLModel
@@ -21,14 +20,14 @@ class WarehouseBase(SQLModel):
 class Warehouse(WarehouseBase, table=True):
     """Database table."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: Optional[datetime] = Field(
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
         ),
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             TIMESTAMP(timezone=True),
@@ -46,16 +45,16 @@ class WarehouseCreate(WarehouseBase):
 class WarehouseUpdate(SQLModel):
     """Request body for PUT/PATCH: every field optional."""
 
-    code: Optional[str] = None
-    name: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    zip_code: Optional[str] = None
-    province: Optional[str] = None
-    country: Optional[str] = None
-    contact_name: Optional[str] = None
-    contact_phone: Optional[str] = None
-    contact_email: Optional[str] = None
+    code: str | None = None
+    name: str | None = None
+    address: str | None = None
+    city: str | None = None
+    zip_code: str | None = None
+    province: str | None = None
+    country: str | None = None
+    contact_name: str | None = None
+    contact_phone: str | None = None
+    contact_email: str | None = None
 
 
 class WarehouseRead(WarehouseBase):

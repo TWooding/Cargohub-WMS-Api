@@ -46,12 +46,25 @@ def client(session):
 @pytest.fixture
 def auth_headers(session):
     """Een API key met rol facility_management (alle rechten), voor tests die niet over auth gaan."""
-    admin = User(username="fixture-admin", email="fixture@x.nl", password_hash="x",
-                 role_id=session.exec(select(Role).where(Role.name == "facility_management")).one().id)
+    admin = User(
+        username="fixture-admin",
+        email="fixture@x.nl",
+        password_hash="x",
+        role_id=session.exec(select(Role).where(Role.name == "facility_management"))
+        .one()
+        .id,
+    )
     session.add(admin)
     session.commit()
     role = session.exec(select(Role).where(Role.name == "facility_management")).one()
-    _, raw = api_key_service.generate(session, label="tests", role=role, client_id=None, created_by=admin.id,
-                                      expires_in_days=1, ip_allowlist=None)
+    _, raw = api_key_service.generate(
+        session,
+        label="tests",
+        role=role,
+        client_id=None,
+        created_by=admin.id,
+        expires_in_days=1,
+        ip_allowlist=None,
+    )
     session.commit()
     return {"X-API-Key": raw}
