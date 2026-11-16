@@ -6,7 +6,6 @@ Geheimen staan alleen als hash in de database.
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
     BigInteger,
