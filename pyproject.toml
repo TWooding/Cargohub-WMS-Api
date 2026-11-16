@@ -24,3 +24,12 @@ dev = [
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-rxX"
+
+[tool.ruff]
+# legacy/ is the old stdlib-based implementation kept as reference only;
+# it is not part of the deployed image (the Dockerfile copies app/ and tests/).
+exclude = ["legacy"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency injection is the idiomatic use of callables in defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
