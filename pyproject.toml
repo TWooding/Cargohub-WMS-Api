@@ -29,7 +29,7 @@ addopts = "-rxX"
 
 [tool.ruff]
 # legacy/ is the old stdlib-based implementation kept as reference only;
-# it is not part of the deployed image (the Dockerfile copies app/ and tests/).
+# it is not part of the deployed image (the runtime stage copies only app/).
 exclude = ["legacy"]
 
 [tool.ruff.lint.flake8-bugbear]
