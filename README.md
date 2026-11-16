@@ -24,6 +24,7 @@ Beveiligde endpoints vereisen authenticatie volgens het Auth System Design: een 
 Bij de eerste start wordt een beheerder aangemaakt uit `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` (dev-defaults: `admin` / `change-me-please-123`, minimaal 12 tekens). Zet in productie een eigen `JWT_SECRET` (min. 32 tekens) en `COOKIE_SECURE=true`. Extra gebruiker: `docker compose exec api python -m app.cli create-user --username ... --email ...`.
 
 De `app/` map is in de container gemount met hot reload: wijzigingen zijn direct actief. Na een wijziging in `pyproject.toml` opnieuw bouwen met `docker compose up -d --build api`.
+De Dockerfile is multi-stage: `docker compose` bouwt het `dev`-target (runtime + pytest/httpx + `tests/`), zodat `docker compose exec api pytest` blijft werken; CI publiceert het `runtime`-target op GHCR — de productie-image zonder dev-dependencies, draaiend als non-root user `app`.
 
 Handige commando's:
 
