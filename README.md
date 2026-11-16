@@ -24,7 +24,6 @@ Beveiligde endpoints vereisen authenticatie volgens het Auth System Design: een 
 Bij de eerste start wordt een beheerder aangemaakt uit `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` (dev-defaults: `admin` / `change-me-please-123`, minimaal 12 tekens). Zet in productie een eigen `JWT_SECRET` (min. 32 tekens) en `COOKIE_SECURE=true`. Extra gebruiker: `docker compose exec api python -m app.cli create-user --username ... --email ...`.
 
 De `app/` map is in de container gemount met hot reload: wijzigingen zijn direct actief. Na een wijziging in `pyproject.toml` opnieuw bouwen met `docker compose up -d --build api`.
-De Dockerfile is multi-stage: `docker compose` bouwt het `dev`-target (runtime + pytest/httpx + `tests/`), zodat `docker compose exec api pytest` blijft werken; CI publiceert het `runtime`-target op GHCR — de productie-image zonder dev-dependencies, draaiend als non-root user `app`.
 
 Handige commando's:
 
@@ -40,6 +39,20 @@ docker compose down -v              # stoppen + database wissen
 ```
 Postman / browser ──► nginx (:8080) ──► api: FastAPI/uvicorn (:8000) ──► db: PostgreSQL (:5432)
 ```
+
+## Docker image
+
+De Dockerfile is multi-stage: `builder` → `runtime` → `dev`.
+
+| Stage | Inhoud | Wie bouwt hem |
+| ----- | ----- | -------------- |
+| `builder` | lost dependencies uit `uv.lock` op in `/opt/venv` | tussenstap |
+| `runtime` | venv + `app/`, draait als non-root user `app` (uid 1000) | CI → GHCR (`--target runtime`) |
+| `dev` | runtime + dev-group (pytest, httpx) + `tests/` | `docker compose` (`target: dev`) |
+
+- `docker compose up -d --build` bouwt het `dev`-image, zodat `docker compose exec api pytest` blijft werken.
+- CI (`.github/workflows/docker-deploy.yml`) publiceert het compacte `runtime`-image op GHCR: zonder dev-dependencies en zonder testcode.
+- Productie lokaal bouwen: `docker build --target runtime .` — een kale `docker build .` levert het dev-image op (`dev` is de laatste stage).
 
 ## Mappenstructuur
 
@@ -61,6 +74,7 @@ app/
     ├── models/             # SQLModel tabellen + request/response schema's
     └── services/           # business logic / database queries
 tests/                      # pytest, draait op in-memory SQLite
+Dockerfile                  # multi-stage: runtime (CI/GHCR) + dev (compose)
 docker/nginx/default.conf   # reverse proxy config
 legacy/                     # API v1 (alleen ter referentie)
 ```
