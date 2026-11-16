@@ -18,15 +18,19 @@ class ClientBase(SQLModel):
 
 
 class Client(ClientBase, table=True):
-
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: Optional[datetime] = Field(
         default=None,
-        sa_column=Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
+        sa_column=Column(
+            TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+        ),
     )
     updated_at: Optional[datetime] = Field(
         default=None,
         sa_column=Column(
-            TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+            TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=func.now(),
+            onupdate=func.now(),
         ),
     )

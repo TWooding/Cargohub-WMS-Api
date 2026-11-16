@@ -41,7 +41,11 @@ def commit_transfer(transfer_id: int):
     not_implemented()
 
 
-@router.delete("/{transfer_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Transfer verwijderen")
+@router.delete(
+    "/{transfer_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Transfer verwijderen",
+)
 def delete_transfer(transfer_id: int):
     """Verwijder een transfer."""
     not_implemented()

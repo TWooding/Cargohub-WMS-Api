@@ -29,7 +29,11 @@ def update_location(location_id: int):
     not_implemented()
 
 
-@router.delete("/{location_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Locatie verwijderen")
+@router.delete(
+    "/{location_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Locatie verwijderen",
+)
 def delete_location(location_id: int):
     """Verwijder een locatie."""
     not_implemented()

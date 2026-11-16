@@ -19,7 +19,9 @@ docker compose up -d --build
 | Health check       | http://localhost:8080/health            |
 | PostgreSQL         | `localhost:5432` (user/pass/db: `cargohub`) |
 
-Beveiligde endpoints vereisen de header `API_KEY` (default `dev-key`, in te stellen via `API_KEYS` in `.env`). In Swagger: klik op **Authorize**.
+Beveiligde endpoints vereisen authenticatie volgens het Auth System Design: een sessiecookie (`POST /api/v2/auth/login`), een bearer token (`login` met `"mode": "token"`) of een API key in de header `X-API-Key` (de v1-naam `API_KEY` werkt ook). Welke methods een rol mag staat in de permissiematrix in [`auth_seed.py`](app/backend/services/auth_seed.py); een resource die er niet in staat geeft 403.
+
+Bij de eerste start wordt een beheerder aangemaakt uit `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` (dev-defaults: `admin` / `change-me-please-123`, minimaal 12 tekens). Zet in productie een eigen `JWT_SECRET` (min. 32 tekens) en `COOKIE_SECURE=true`. Extra gebruiker: `docker compose exec api python -m app.cli create-user --username ... --email ...`.
 
 De `app/` map is in de container gemount met hot reload: wijzigingen zijn direct actief. Na een wijziging in `pyproject.toml` opnieuw bouwen met `docker compose up -d --build api`.
 
@@ -49,7 +51,9 @@ app/
 │   ├── router.py           # verzamelt alle routers, publiek vs. beveiligd
 │   └── endpoints/          # één bestand per resource (warehouses.py, ...)
 ├── middleware/             # alles tussen request en endpoint
-│   ├── auth.py             # API key check
+│   ├── auth.py             # principal (cookie/bearer/API key) + permissiecheck
+│   ├── rate_limit.py       # brute-force bescherming
+│   ├── request_context.py  # request-id + security headers
 │   └── request_timing.py   # request logging + X-Process-Time header
 └── backend/                # data-laag
     ├── database.py         # engine + session per request

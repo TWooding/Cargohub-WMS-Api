@@ -35,7 +35,11 @@ def update_supplier(supplier_id: int):
     not_implemented()
 
 
-@router.delete("/{supplier_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Leverancier verwijderen")
+@router.delete(
+    "/{supplier_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Leverancier verwijderen",
+)
 def delete_supplier(supplier_id: int):
     """Verwijder een leverancier."""
     not_implemented()

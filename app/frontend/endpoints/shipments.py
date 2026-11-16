@@ -53,7 +53,11 @@ def update_shipment_items(shipment_id: int):
     not_implemented()
 
 
-@router.delete("/{shipment_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Zending verwijderen")
+@router.delete(
+    "/{shipment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Zending verwijderen",
+)
 def delete_shipment(shipment_id: int):
     """Verwijder een zending."""
     not_implemented()
