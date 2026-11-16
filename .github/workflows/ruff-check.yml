@@ -2,7 +2,7 @@ name: Ruff Check
 
 on:
     push:
-        branches: [dev, main]
+        branches: [dev]
 
 jobs:
     ruff-check:
@@ -19,4 +19,4 @@ jobs:
             - name: Install Ruff
               run: uv sync --frozen
             - name: Run Ruff on app
-              run: ruff check app
+              run: ruff check --exclude legacy

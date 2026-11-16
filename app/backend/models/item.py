@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Column, TIMESTAMP, func
-from sqlmodel import Enum, Field, SQLModel
+from sqlmodel import Field, SQLModel
 
 
 class ItemBase(SQLModel):
