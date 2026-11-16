@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import TIMESTAMP, Column, func
 from sqlmodel import Enum, Field, SQLModel
 
-from app.backend.models.databaseEnums import TransferStatus
+from app.backend.models.database_enums import TransferStatus
 
 
 class TransferBase(SQLModel):

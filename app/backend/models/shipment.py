@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import TIMESTAMP, Column, func
 from sqlmodel import Enum, Field, SQLModel
 
-from app.backend.models.databaseEnums import ShipmentStatus, ShipmentType
+from app.backend.models.database_enums import ShipmentStatus, ShipmentType
 
 
 class ShipmentBase(SQLModel):
