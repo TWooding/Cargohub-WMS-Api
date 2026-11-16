@@ -88,6 +88,9 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          # Publish the slim runtime stage; the dev stage (pytest, tests/)
+          # is only used by the local docker-compose setup.
+          target: runtime
           platforms: linux/amd64 # add linux/arm64 here for e.g. Raspberry Pi
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}

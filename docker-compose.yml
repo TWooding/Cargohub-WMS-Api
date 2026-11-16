@@ -17,7 +17,11 @@ services:
       retries: 10
 
   api:
-    build: .
+    build:
+      context: .
+      # dev-target: runtime + pytest/httpx + tests/ (voor `docker compose exec api pytest`).
+      # CI (docker-deploy.yml) bouwt het compacte `runtime`-target voor de GHCR-image.
+      target: dev
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cargohub}:${POSTGRES_PASSWORD:-cargohub}@db:5432/${POSTGRES_DB:-cargohub}
