@@ -1,0 +1,22 @@
+name: Ruff Check
+
+on:
+    push:
+        branches: [dev, main]
+
+jobs:
+    ruff-check:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.x"
+
+            - name: Install Ruff
+              run: uv sync --frozen
+            - name: Run Ruff on app
+              run: ruff check app
