@@ -35,7 +35,9 @@ def update_client(client_id: int):
     not_implemented()
 
 
-@router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Klant verwijderen")
+@router.delete(
+    "/{client_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Klant verwijderen"
+)
 def delete_client(client_id: int):
     """Verwijder een klant."""
     not_implemented()

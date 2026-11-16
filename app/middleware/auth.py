@@ -16,5 +16,8 @@ def require_api_key(
     TODO: replace the env-based key list with users + per-endpoint rights from the database.
     """
     if api_key is None or api_key not in settings.api_key_list:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing API key")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key",
+        )
     return api_key
