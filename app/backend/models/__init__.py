@@ -1,3 +1,13 @@
+from app.backend.models.auth import (
+    ApiKey,
+    AuthEvent,
+    AuthSession,
+    Permission,
+    RefreshToken,
+    Role,
+    RolePermission,
+    User,
+)
 from app.backend.models.client import Client
 from app.backend.models.inventory import Inventory
 from app.backend.models.item import Item
@@ -20,6 +30,9 @@ from app.backend.models.warehouse import (
 )
 
 __all__ = [
+    "ApiKey",
+    "AuthEvent",
+    "AuthSession",
     "Client",
     "Inventory",
     "Item",
@@ -29,11 +42,16 @@ __all__ = [
     "Location",
     "Order",
     "OrderItem",
+    "Permission",
+    "RefreshToken",
+    "Role",
+    "RolePermission",
     "Shipment",
     "ShipmentItem",
     "Supplier",
     "Transfer",
     "TransferItem",
+    "User",
     "Warehouse",
     "WarehouseCreate",
     "WarehouseRead",

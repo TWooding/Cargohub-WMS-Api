@@ -1,15 +1,18 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Column, TIMESTAMP, func
+from sqlalchemy import TIMESTAMP, Column, func
 from sqlmodel import Enum, Field, SQLModel
+
 from app.backend.models.databaseEnums import ShipmentStatus, ShipmentType
 
 
 class ShipmentBase(SQLModel):
     order_id: int = Field(default=None, foreign_key="order.id")
     reference: str
-    shipment_date: datetime = Field(nullable=False)
+    shipment_date: datetime = Field(
+        default=None,
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
     shipment_status: ShipmentStatus | None = Field(
         default=ShipmentStatus.scheduled, sa_column=Column(Enum(ShipmentStatus))
     )

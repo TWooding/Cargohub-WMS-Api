@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Column, TIMESTAMP, func
+from sqlalchemy import TIMESTAMP, Column, func
 from sqlmodel import Field, SQLModel
 
 
@@ -14,7 +13,7 @@ class SupplierBase(SQLModel):
     province: str
     country: str
     contact_name: str
-    contact_phone: str
+    contact_phone: str | None = None
     reference: str
 
 

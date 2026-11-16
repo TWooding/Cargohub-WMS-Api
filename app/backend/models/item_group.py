@@ -1,19 +1,18 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Column, TIMESTAMP, func
+from sqlalchemy import TIMESTAMP, Column, func
 from sqlmodel import Field, SQLModel
 
 
-class ItemTypeBase(SQLModel):
+class ItemGroupBase(SQLModel):
     name: str
     description: str
 
 
-class ItemType(ItemTypeBase, table=True):
+class ItemGroup(ItemGroupBase, table=True):
     """Database table."""
 
-    __tablename__ = "item_type"
+    __tablename__ = "item_group"
 
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime | None = Field(
