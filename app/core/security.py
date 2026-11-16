@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import secrets
 import string
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 _ALNUM = string.ascii_letters + string.digits
 
