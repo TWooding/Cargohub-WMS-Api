@@ -4,19 +4,19 @@ import hashlib
 import hmac
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 _ALNUM = string.ascii_letters + string.digits
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def aware(dt: datetime | None) -> datetime | None:
     """SQLite geeft naive datetimes terug; behandel die als UTC."""
     if dt is not None and dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 

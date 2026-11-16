@@ -1,4 +1,3 @@
-
 from sqlmodel import Session, select
 
 from app.backend.models import Warehouse, WarehouseCreate, WarehouseUpdate
