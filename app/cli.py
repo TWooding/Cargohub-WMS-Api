@@ -1,4 +1,5 @@
 """Beheer-CLI:  python -m app.cli seed | create-user"""
+
 import argparse
 import getpass
 import sys
@@ -39,8 +40,15 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as e:
             print(e, file=sys.stderr)
             return 1
-        db.add(User(username=args.username.lower(), email=args.email.lower(), role_id=role.id,
-                    client_id=args.client_id, password_hash=passwords.hash_password(password)))
+        db.add(
+            User(
+                username=args.username.lower(),
+                email=args.email.lower(),
+                role_id=role.id,
+                client_id=args.client_id,
+                password_hash=passwords.hash_password(password),
+            )
+        )
         db.commit()
     return 0
 

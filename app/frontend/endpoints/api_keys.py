@@ -23,16 +23,28 @@ class ApiKeyIn(BaseModel):
     role_id: int
     client_id: int | None = None
     expires_in_days: int | None = Field(default=365, ge=1, le=3650)
-    ip_allowlist: str | None = Field(default=None, max_length=500)  # "10.0.0.0/24,192.0.2.7"
+    ip_allowlist: str | None = Field(
+        default=None, max_length=500
+    )  # "10.0.0.0/24,192.0.2.7"
 
 
 def _view(k: ApiKey) -> dict:
-    return {"id": k.id, "key_id": k.key_id, "label": k.label, "role": k.role.name, "client_id": k.client_id,
-            "last_used_at": k.last_used_at, "expires_at": k.expires_at, "revoked_at": k.revoked_at}
+    return {
+        "id": k.id,
+        "key_id": k.key_id,
+        "label": k.label,
+        "role": k.role.name,
+        "client_id": k.client_id,
+        "last_used_at": k.last_used_at,
+        "expires_at": k.expires_at,
+        "revoked_at": k.revoked_at,
+    }
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="API key uitgeven")
-def issue(body: ApiKeyIn, request: Request, db: Db, response: Response, p: CurrentPrincipal):
+def issue(
+    body: ApiKeyIn, request: Request, db: Db, response: Response, p: CurrentPrincipal
+):
     """De key staat alleen in dit antwoord; daarna is alleen de hash nog bekend."""
     if p.kind != "user":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "API keys cannot issue API keys")
@@ -42,11 +54,26 @@ def issue(body: ApiKeyIn, request: Request, db: Db, response: Response, p: Curre
     if role.name == "client" and body.client_id is None:
         raise HTTPException(422, "client_id is required for the client role")
     row, raw = api_key_service.generate(
-        db, label=body.label, role=role, client_id=body.client_id, created_by=p.id,
-        expires_in_days=body.expires_in_days, ip_allowlist=body.ip_allowlist)
+        db,
+        label=body.label,
+        role=role,
+        client_id=body.client_id,
+        created_by=p.id,
+        expires_in_days=body.expires_in_days,
+        ip_allowlist=body.ip_allowlist,
+    )
     db.commit()
-    audit(db, request, "api_key_issued", kind="user", pid=p.id, resource="api-keys", method="post",
-          status=201, detail=f"key_id={row.key_id} label={row.label} role={role.name}")
+    audit(
+        db,
+        request,
+        "api_key_issued",
+        kind="user",
+        pid=p.id,
+        resource="api-keys",
+        method="post",
+        status=201,
+        detail=f"key_id={row.key_id} label={row.label} role={role.name}",
+    )
     response.headers["Cache-Control"] = "no-store"
     return {**_view(row), "api_key": raw}
 
@@ -56,7 +83,9 @@ def list_keys(db: Db):
     return [_view(k) for k in db.exec(select(ApiKey).order_by(ApiKey.label))]
 
 
-@router.delete("/{key_pk}", status_code=status.HTTP_204_NO_CONTENT, summary="API key intrekken")
+@router.delete(
+    "/{key_pk}", status_code=status.HTTP_204_NO_CONTENT, summary="API key intrekken"
+)
 def revoke(key_pk: uuid.UUID, request: Request, db: Db, p: CurrentPrincipal):
     row = db.get(ApiKey, key_pk)
     if not row:
@@ -65,6 +94,15 @@ def revoke(key_pk: uuid.UUID, request: Request, db: Db, p: CurrentPrincipal):
         row.revoked_at = utcnow()
         db.add(row)
         db.commit()
-        audit(db, request, "api_key_revoked", kind="user", pid=p.id, resource="api-keys", method="delete",
-              status=204, detail=f"key_id={row.key_id}")
+        audit(
+            db,
+            request,
+            "api_key_revoked",
+            kind="user",
+            pid=p.id,
+            resource="api-keys",
+            method="delete",
+            status=204,
+            detail=f"key_id={row.key_id}",
+        )
     return Response(status_code=204)

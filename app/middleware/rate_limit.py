@@ -37,5 +37,7 @@ def enforce(key: str, limit: int, window: int) -> None:
     retry = limiter.hit(key, limit, window)
     if retry:
         raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS, "too many requests", headers={"Retry-After": str(retry)}
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "too many requests",
+            headers={"Retry-After": str(retry)},
         )

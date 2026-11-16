@@ -35,7 +35,11 @@ def update_item_group(item_group_id: int):
     not_implemented()
 
 
-@router.delete("/{item_group_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Productgroep verwijderen")
+@router.delete(
+    "/{item_group_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Productgroep verwijderen",
+)
 def delete_item_group(item_group_id: int):
     """Verwijder een productgroep."""
     not_implemented()

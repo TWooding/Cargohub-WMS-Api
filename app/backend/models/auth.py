@@ -3,11 +3,20 @@
 Typen zijn portable: Postgres in productie (citext/inet), SQLite in tests.
 Geheimen staan alleen als hash in de database.
 """
+
 import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, DateTime, Integer, SmallInteger, String, UniqueConstraint, func
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Integer,
+    SmallInteger,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import CITEXT, INET
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -23,13 +32,17 @@ def _ts(**kw):
 
 
 def _created():
-    return Field(default=None, sa_type=TS, sa_column_kwargs={"server_default": func.now()})
+    return Field(
+        default=None, sa_type=TS, sa_column_kwargs={"server_default": func.now()}
+    )
 
 
 class RolePermission(SQLModel, table=True):
     __tablename__ = "role_permissions"
     role_id: int = Field(foreign_key="roles.id", primary_key=True, sa_type=SmallInteger)
-    permission_id: int = Field(foreign_key="permissions.id", primary_key=True, sa_type=SmallInteger)
+    permission_id: int = Field(
+        foreign_key="permissions.id", primary_key=True, sa_type=SmallInteger
+    )
 
 
 class Permission(SQLModel, table=True):
@@ -68,7 +81,9 @@ class User(SQLModel, table=True):
     locked_until: Optional[datetime] = _ts()
     created_at: Optional[datetime] = _created()
     updated_at: Optional[datetime] = Field(
-        default=None, sa_type=TS, sa_column_kwargs={"server_default": func.now(), "onupdate": func.now()}
+        default=None,
+        sa_type=TS,
+        sa_column_kwargs={"server_default": func.now(), "onupdate": func.now()},
     )
     role: Role = Relationship(sa_relationship_kwargs={"lazy": "joined"})
 

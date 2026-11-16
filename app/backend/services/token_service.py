@@ -32,14 +32,19 @@ def issue_access(settings: Settings, *, sub: uuid.UUID, role: str, knd: str) -> 
 def decode_access(settings: Settings, token: str) -> dict | None:
     try:
         claims = jwt.decode(
-            token, settings.jwt_secret, algorithms=[ALG], options={"require": ["exp", "sub", "typ", "knd"]}
+            token,
+            settings.jwt_secret,
+            algorithms=[ALG],
+            options={"require": ["exp", "sub", "typ", "knd"]},
         )
     except jwt.PyJWTError:
         return None
     return claims if claims["typ"] == "access" else None
 
 
-def issue_token_pair(session: Session, settings: Settings, user: User, family_id: uuid.UUID | None = None) -> dict:
+def issue_token_pair(
+    session: Session, settings: Settings, user: User, family_id: uuid.UUID | None = None
+) -> dict:
     raw = random_token(48)  # opaque string, geen jwt
     session.add(
         RefreshToken(
@@ -50,7 +55,9 @@ def issue_token_pair(session: Session, settings: Settings, user: User, family_id
         )
     )
     return {
-        "access_token": issue_access(settings, sub=user.id, role=user.role.name, knd="user"),
+        "access_token": issue_access(
+            settings, sub=user.id, role=user.role.name, knd="user"
+        ),
         "refresh_token": raw,
         "token_type": "bearer",
         "expires_in": settings.access_token_ttl_seconds,

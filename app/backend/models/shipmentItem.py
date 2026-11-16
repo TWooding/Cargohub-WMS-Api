@@ -2,9 +2,10 @@ from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
+
 class ShipmentItemBase(SQLModel):
-    item_id: int = Field(foreign_key='item.id')
-    shipment_id: int = Field(foreign_key='shipment.id')
+    item_id: int = Field(foreign_key="item.id")
+    shipment_id: int = Field(foreign_key="shipment.id")
     amount: int
 
 

@@ -1,8 +1,15 @@
 """Fail closed (sectie 06): elke route moet een permissie declareren of expliciet identiteit-only zijn."""
+
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-OPEN_PATH_SUFFIXES = ("/health", "/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc")
+OPEN_PATH_SUFFIXES = (
+    "/health",
+    "/openapi.json",
+    "/docs",
+    "/docs/oauth2-redirect",
+    "/redoc",
+)
 
 
 def _calls(dependant):

@@ -35,7 +35,11 @@ def update_item_line(item_line_id: int):
     not_implemented()
 
 
-@router.delete("/{item_line_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Productlijn verwijderen")
+@router.delete(
+    "/{item_line_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Productlijn verwijderen",
+)
 def delete_item_line(item_line_id: int):
     """Verwijder een productlijn."""
     not_implemented()

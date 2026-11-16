@@ -1,29 +1,45 @@
-from sqlmodel import Session, SQLModel, create_engine, select, func, col
+from sqlmodel import Session, create_engine, select, func
 
-from app.backend.models import Warehouse, Client, ItemGroup, ItemLine, ItemType, Supplier, Item, Inventory, Location, \
-    Order, OrderItem, Shipment, ShipmentItem, Transfer, TransferItem
+from app.backend.models import (
+    Warehouse,
+    Client,
+    ItemGroup,
+    ItemLine,
+    ItemType,
+    Supplier,
+    Item,
+    Inventory,
+    Location,
+    Order,
+    OrderItem,
+    Shipment,
+    ShipmentItem,
+    Transfer,
+    TransferItem,
+)
 from app.core.config import get_settings
 import json
 
 engine = create_engine(get_settings().database_url, pool_pre_ping=True)
 
 tables = {
-    'warehouse': Warehouse,
-    'client': Client,
-    'item_group': ItemGroup,
-    'item_line': ItemLine,
-    'item_type': ItemType,
-    'supplier': Supplier,
-    'item': Item,
-    'location': Location,
-    'inventory': Inventory,
-    'order': Order,
-    'order_item': OrderItem,
-    'shipment': Shipment,
-    'shipment_item': ShipmentItem,
-    'transfer': Transfer,
-    'transfer_item': TransferItem,
+    "warehouse": Warehouse,
+    "client": Client,
+    "item_group": ItemGroup,
+    "item_line": ItemLine,
+    "item_type": ItemType,
+    "supplier": Supplier,
+    "item": Item,
+    "location": Location,
+    "inventory": Inventory,
+    "order": Order,
+    "order_item": OrderItem,
+    "shipment": Shipment,
+    "shipment_item": ShipmentItem,
+    "transfer": Transfer,
+    "transfer_item": TransferItem,
 }
+
 
 def seed_table(table_class, file_name):
     with Session(engine) as session:
@@ -33,9 +49,9 @@ def seed_table(table_class, file_name):
     with open(f"../../legacy/data/{file_name}.json") as file:
         data = json.load(file)
 
-    if file_name == 'item':
+    if file_name == "item":
         for item in data:
-            item['item_code'] = item.pop('code')
+            item["item_code"] = item.pop("code")
 
     with Session(engine) as session:
         session.bulk_insert_mappings(table_class, data)

@@ -1,5 +1,6 @@
 """Stap 2-3 van de request lifecycle (Auth System Design, sectie 06):
 identify (cookie | bearer | X-API-Key -> Principal) en authorize (resource:method)."""
+
 import hmac
 import uuid
 from dataclasses import dataclass
@@ -37,7 +38,11 @@ class Principal:
 
 
 def _unauth() -> HTTPException:
-    return HTTPException(status.HTTP_401_UNAUTHORIZED, "not authenticated", headers={"WWW-Authenticate": "Bearer"})
+    return HTTPException(
+        status.HTTP_401_UNAUTHORIZED,
+        "not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def _perms(role) -> frozenset[str]:
@@ -45,14 +50,32 @@ def _perms(role) -> frozenset[str]:
 
 
 def _user_principal(user: User, via: str) -> Principal:
-    return Principal("user", user.id, user.username, user.role.name, _perms(user.role), user.client_id, via)
+    return Principal(
+        "user",
+        user.id,
+        user.username,
+        user.role.name,
+        _perms(user.role),
+        user.client_id,
+        via,
+    )
 
 
 def _key_principal(row: ApiKey, via: str) -> Principal:
-    return Principal("api_key", row.id, row.label, row.role.name, _perms(row.role), row.client_id, via)
+    return Principal(
+        "api_key",
+        row.id,
+        row.label,
+        row.role.name,
+        _perms(row.role),
+        row.client_id,
+        via,
+    )
 
 
-def principal_from_session(request: Request, db: Session, settings: Settings, session_id: str) -> Principal:
+def principal_from_session(
+    request: Request, db: Session, settings: Settings, session_id: str
+) -> Principal:
     row = db.get(AuthSession, session_id)
     now = utcnow()
     if not row or row.revoked_at or aware(row.expires_at) <= now:
@@ -60,14 +83,31 @@ def principal_from_session(request: Request, db: Session, settings: Settings, se
     user = db.get(User, row.user_id)
     if not user or not user.is_active:
         raise _unauth()
-    if request.method not in SAFE_METHODS:  # CSRF alleen bij cookies: double-submit, gebonden aan de sessie
+    if (
+        request.method not in SAFE_METHODS
+    ):  # CSRF alleen bij cookies: double-submit, gebonden aan de sessie
         expected = csrf_token(settings.jwt_secret, session_id)
         header = request.headers.get(CSRF_HEADER, "")
         cookie = request.cookies.get(CSRF_COOKIE, "")
-        if not (hmac.compare_digest(header, expected) and hmac.compare_digest(cookie, expected)):
-            audit(db, request, "csrf_failed", kind="user", pid=user.id, method=request.method, status=403)
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "csrf token missing or invalid")
-    if now - aware(row.last_seen_at) > TOUCH_INTERVAL:  # sliding expiry: 8 uur inactiviteit
+        if not (
+            hmac.compare_digest(header, expected)
+            and hmac.compare_digest(cookie, expected)
+        ):
+            audit(
+                db,
+                request,
+                "csrf_failed",
+                kind="user",
+                pid=user.id,
+                method=request.method,
+                status=403,
+            )
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "csrf token missing or invalid"
+            )
+    if (
+        now - aware(row.last_seen_at) > TOUCH_INTERVAL
+    ):  # sliding expiry: 8 uur inactiviteit
         row.last_seen_at = now
         row.expires_at = now + timedelta(seconds=settings.session_ttl_seconds)
         db.add(row)
@@ -75,7 +115,9 @@ def principal_from_session(request: Request, db: Session, settings: Settings, se
     return _user_principal(user, "session")
 
 
-def principal_from_token(request: Request, db: Session, settings: Settings, bearer: str) -> Principal:
+def principal_from_token(
+    request: Request, db: Session, settings: Settings, bearer: str
+) -> Principal:
     claims = token_service.decode_access(settings, bearer)
     if not claims:
         raise _unauth()
@@ -97,13 +139,24 @@ def principal_from_token(request: Request, db: Session, settings: Settings, bear
     raise _unauth()
 
 
-def principal_from_api_key(request: Request, db: Session, settings: Settings, header: str) -> Principal:
+def principal_from_api_key(
+    request: Request, db: Session, settings: Settings, header: str
+) -> Principal:
     ip = client_ip(request) or "?"
     row = api_key_service.authenticate(db, header, ip)
     if not row:
-        enforce(f"keyfail:{ip}", settings.api_key_fail_limit, settings.rate_window_seconds)
+        enforce(
+            f"keyfail:{ip}", settings.api_key_fail_limit, settings.rate_window_seconds
+        )
         parsed = api_key_service.parse(header)
-        audit(db, request, "api_key_failed", kind="anonymous", status=401, detail=parsed[0] if parsed else None)
+        audit(
+            db,
+            request,
+            "api_key_failed",
+            kind="anonymous",
+            status=401,
+            detail=parsed[0] if parsed else None,
+        )
         raise _unauth()
     now = utcnow()
     if not row.last_used_at or now - aware(row.last_used_at) > TOUCH_INTERVAL:
@@ -120,7 +173,9 @@ def current_principal(
     wms_session: Annotated[str | None, Cookie()] = None,
     authorization: Annotated[str | None, Header()] = None,
     x_api_key: Annotated[str | None, Header()] = None,
-    api_key_v1: Annotated[str | None, Header(alias="API_KEY")] = None,  # v1-headernaam blijft werken
+    api_key_v1: Annotated[
+        str | None, Header(alias="API_KEY")
+    ] = None,  # v1-headernaam blijft werken
 ) -> Principal:
     if wms_session:
         return principal_from_session(request, db, settings, wms_session)
@@ -137,9 +192,20 @@ def current_principal(
 CurrentPrincipal = Annotated[Principal, Depends(current_principal)]
 
 
-def _check(request: Request, db: Session, p: Principal, resource: str, method: str) -> Principal:
+def _check(
+    request: Request, db: Session, p: Principal, resource: str, method: str
+) -> Principal:
     if f"{resource}:{method}" not in p.permissions:
-        audit(db, request, "access_denied", kind=p.kind, pid=p.id, resource=resource, method=method, status=403)
+        audit(
+            db,
+            request,
+            "access_denied",
+            kind=p.kind,
+            pid=p.id,
+            resource=resource,
+            method=method,
+            status=403,
+        )
         raise HTTPException(status.HTTP_403_FORBIDDEN, "insufficient permissions")
     return p
 
@@ -149,11 +215,15 @@ def require(resource: str, method: str):
     needed_method = method.lower()
 
     def guard(
-        request: Request, db: Annotated[Session, Depends(get_session)], p: CurrentPrincipal
+        request: Request,
+        db: Annotated[Session, Depends(get_session)],
+        p: CurrentPrincipal,
     ) -> Principal:
         return _check(request, db, p, resource, needed_method)
 
-    guard.permission = f"{resource}:{needed_method}"  # voor de fail-closed controle (guard_check)
+    guard.permission = (
+        f"{resource}:{needed_method}"  # voor de fail-closed controle (guard_check)
+    )
     return guard
 
 
@@ -165,7 +235,9 @@ def require_route_permission(
 ) -> Principal:
     """Default guard op de hele api_router (fail closed): resource = eerste padsegment na de prefix,
     method = HTTP-method. Een resource die niet in de matrix staat, geeft voor iedereen 403."""
-    segment = request.url.path.removeprefix(settings.api_prefix).lstrip("/").split("/")[0]
+    segment = (
+        request.url.path.removeprefix(settings.api_prefix).lstrip("/").split("/")[0]
+    )
     resource = RESOURCE_ALIASES.get(segment, segment)
     return _check(request, db, p, resource, request.method.lower())
 
@@ -178,6 +250,8 @@ def client_scope(p: Principal) -> int | None:
     andere rollen None (geen filter). Een client zonder client_id krijgt 403 (fail closed)."""
     if p.role == "client":
         if p.client_id is None:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "client principal has no client_id")
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "client principal has no client_id"
+            )
         return p.client_id
     return None

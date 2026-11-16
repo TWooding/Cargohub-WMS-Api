@@ -41,7 +41,9 @@ def update_order_items(order_id: int):
     not_implemented()
 
 
-@router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Order verwijderen")
+@router.delete(
+    "/{order_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Order verwijderen"
+)
 def delete_order(order_id: int):
     """Verwijder een order."""
     not_implemented()

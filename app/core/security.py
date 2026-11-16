@@ -1,4 +1,5 @@
 """Kleine crypto/tijd-helpers zonder framework-afhankelijkheden."""
+
 import hashlib
 import hmac
 import secrets
@@ -37,7 +38,9 @@ def constant_time_eq(a: bytes | str, b: bytes | str) -> bool:
 
 def csrf_token(secret: str, session_id: str) -> str:
     """Double-submit token, gebonden aan de sessie zodat een aanvaller het niet kan zetten."""
-    return hmac.new(secret.encode(), b"csrf:" + session_id.encode(), hashlib.sha256).hexdigest()
+    return hmac.new(
+        secret.encode(), b"csrf:" + session_id.encode(), hashlib.sha256
+    ).hexdigest()
 
 
 def client_ip(request) -> str | None:
