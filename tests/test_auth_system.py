@@ -5,6 +5,7 @@ import uuid
 from datetime import timedelta
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlmodel import select
 
@@ -16,7 +17,6 @@ from app.core.security import utcnow
 from app.main import app
 from app.middleware.auth import Principal, client_scope
 from app.middleware.guard_check import unguarded_routes
-from fastapi import HTTPException
 
 PW = "correct horse battery"
 P = get_settings().api_prefix
