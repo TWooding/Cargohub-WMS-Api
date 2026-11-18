@@ -26,6 +26,8 @@ tables = {
 }
 
 def seed_table(table_class, file_name):
+    SQLModel.metadata.create_all(engine)
+
     with Session(engine) as session:
         if session.exec(select(func.count()).select_from(table_class)).one() != 0:
             return
