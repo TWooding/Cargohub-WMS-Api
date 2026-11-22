@@ -5,10 +5,9 @@ import socketserver
 import threading
 from pathlib import Path
 
+import main
 import pytest
 import requests
-
-import main
 from providers import auth_provider, data_provider
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -22,13 +21,23 @@ def load_json(name):
         return json.load(f)
 
 
+# Voor unittests: maakt een model aan met eigen, kleine data in plaats van de echte data map
+def make_pool(model, file, rows, tmp_path):
+    folder = tmp_path / "unit"
+    folder.mkdir(exist_ok=True)
+    (folder / f"{file}.json").write_text(json.dumps(rows))
+    return model(str(folder) + os.sep)
+
+
 class ApiClient:
     def __init__(self, base_url):
         self.base_url = base_url
 
     def request(self, method, path, app="analytics_dashboard", body=None):
         headers = {"API_KEY": API_KEYS[app]}
-        return requests.request(method, self.base_url + path, headers=headers, json=body, timeout=30)
+        return requests.request(
+            method, self.base_url + path, headers=headers, json=body, timeout=30
+        )
 
     def get(self, path, app="analytics_dashboard"):
         return self.request("GET", path, app)
@@ -81,9 +90,13 @@ def fixed_storage(data_dir, monkeypatch):
     shipment_items = data_provider.fetch_shipment_item_pool()
 
     monkeypatch.setattr(data_provider, "fetch_transfer_pool", lambda: transfers)
-    monkeypatch.setattr(data_provider, "fetch_transfer_item_pool", lambda: transfer_items)
+    monkeypatch.setattr(
+        data_provider, "fetch_transfer_item_pool", lambda: transfer_items
+    )
     monkeypatch.setattr(data_provider, "fetch_inventory_pool", lambda: inventories)
     monkeypatch.setattr(data_provider, "fetch_order_pool", lambda: orders)
     monkeypatch.setattr(data_provider, "fetch_order_item_pool", lambda: order_items)
     monkeypatch.setattr(data_provider, "fetch_shipment_pool", lambda: shipments)
-    monkeypatch.setattr(data_provider, "fetch_shipment_item_pool", lambda: shipment_items)
+    monkeypatch.setattr(
+        data_provider, "fetch_shipment_item_pool", lambda: shipment_items
+    )
