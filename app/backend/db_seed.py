@@ -38,6 +38,9 @@ def seed_table(table_class, file_name):
     if file_name == 'item':
         for item in data:
             item['item_code'] = item.pop('code')
+    if file_name == 'supplier':
+        for supplier in data:
+            supplier['contact_phone'] = supplier.pop('phone_number')
 
     with Session(engine) as session:
         session.bulk_insert_mappings(table_class, data)
