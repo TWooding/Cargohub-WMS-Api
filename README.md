@@ -21,7 +21,7 @@ docker compose up -d --build
 
 Beveiligde endpoints vereisen authenticatie volgens het Auth System Design: een sessiecookie (`POST /api/v2/auth/login`), een bearer token (`login` met `"mode": "token"`) of een API key in de header `X-API-Key` (de v1-naam `API_KEY` werkt ook). Welke methods een rol mag staat in de permissiematrix in [`auth_seed.py`](app/backend/services/auth_seed.py); een resource die er niet in staat geeft 403.
 
-Bij de eerste start wordt een beheerder aangemaakt uit `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` (dev-defaults: `admin` / `change-me-please-123`, minimaal 12 tekens). Zet in productie een eigen `JWT_SECRET` (min. 32 tekens) en `COOKIE_SECURE=true`. Extra gebruiker: `docker compose exec api python -m app.cli create-user --username ... --email ...`.
+Bij de eerste start wordt een beheerder aangemaakt uit `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` (dev-defaults: `admin` / `change-me-please-123`, minimaal 12 tekens). Zet in productie een eigen `JWT_SECRET` (min. 32 tekens) en `COOKIE_SECURE=true`. Met `LOG_LEVEL` (default `INFO`) stel je het logniveau in. Extra gebruiker: `docker compose exec api python -m app.cli create-user --username ... --email ...`.
 
 De `app/` map is in de container gemount met hot reload: wijzigingen zijn direct actief. Na een wijziging in `pyproject.toml` opnieuw bouwen met `docker compose up -d --build api`.
 

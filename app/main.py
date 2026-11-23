@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -6,12 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.backend.database import init_db
 from app.core.config import get_settings
+from app.core.logger import configure_logging
 from app.frontend.router import api_router, auth_router, public_router
 from app.middleware.request_context import RequestContextMiddleware
 from app.middleware.request_timing import RequestTimingMiddleware
 
-logging.basicConfig(level=logging.INFO)
 settings = get_settings()
+configure_logging(settings.log_level)
 
 
 @asynccontextmanager
