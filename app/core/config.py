@@ -1,3 +1,4 @@
+import logging
 from functools import lru_cache
 
 from pydantic import field_validator
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
 
     app_name: str = "CargoHUB WMS API"
     api_prefix: str = "/api/v2"
+    log_level: str = "INFO"
     database_url: str = "postgresql+psycopg://cargohub:cargohub@localhost:5432/cargohub"
 
     # --- Auth (zie Auth System Design) ---
@@ -35,6 +37,14 @@ class Settings(BaseSettings):
     bootstrap_admin_username: str = ""
     bootstrap_admin_email: str = ""
     bootstrap_admin_password: str = ""
+
+    @field_validator("log_level")
+    @classmethod
+    def _valid_log_level(cls, v: str) -> str:
+        level = v.upper()
+        if level not in logging.getLevelNamesMapping():
+            raise ValueError("LOG_LEVEL moet een geldig logniveau zijn")
+        return level
 
     @field_validator("jwt_secret")
     @classmethod

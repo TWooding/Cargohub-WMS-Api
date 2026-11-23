@@ -1,10 +1,11 @@
-import logging
 import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-logger = logging.getLogger("cargohub.requests")
+from app.core.logger import get_logger
+
+logger = get_logger("requests")
 
 
 class RequestTimingMiddleware(BaseHTTPMiddleware):
